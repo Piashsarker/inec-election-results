@@ -11,9 +11,12 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-# Add backend directory to path for imports
-backend_dir = Path(__file__).resolve().parents[4]
-sys.path.insert(0, str(backend_dir))
+# Add app directory to path for imports (works in both local and Docker)
+# In Docker: /app is the working directory
+# Locally: backend/ is the working directory
+app_dir = Path(__file__).resolve().parents[3]  # Goes up to backend/app's parent
+if str(app_dir) not in sys.path:
+    sys.path.insert(0, str(app_dir))
 
 from alembic import context
 from sqlalchemy import pool
