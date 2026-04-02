@@ -310,11 +310,24 @@ class Settings(BaseSettings):
     
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def parse_cors_origins(cls, v: str | list[str]) -> list[str]:
-        """Parse CORS origins from comma-separated string or list."""
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from comma-separated string, JSON array, or list."""
+        if v is None:
+            return ["http://localhost:3000", "https://*.vercel.app"]
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
+            # Try to parse as JSON first
+            v = v.strip()
+            if v.startswith("["):
+                import json
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    pass
+            # Fall back to comma-separated
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        if isinstance(v, list):
+            return v
+        return ["http://localhost:3000", "https://*.vercel.app"]
     
     def get_celery_broker_url(self) -> str:
         """Get Celery broker URL, defaulting to Redis URL."""
