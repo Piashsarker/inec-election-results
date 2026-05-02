@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Push Branch and Create PR",
+  "description": "After the agent finishes all work, it creates a branch using the format issue/#issue_number (e.g., issue/1), commits all changes, pushes to the remote, and creates a pull request to merge into main. The PR description references the related GitHub issue and summarizes the changes made.",
+  "version": "1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "After completing code changes, follow this workflow to push and create a PR:\n\n1. Check if there are any uncommitted changes using `git status`. If no changes exist, skip this workflow.\n\n2. Identify the related GitHub issue number. Use the GitHub MCP tool (mcp_github_list_issues) to find the relevant issue for the work just completed.\n\n3. Create and checkout a new branch with the format: `issue/#<issue_number>` (e.g., `issue/#1`). If no specific issue applies, use `issue/#0-<short-description>`.\n\n4. Stage all changed files with `git add .` (but exclude .env files and secrets).\n\n5. Commit with a descriptive message in the format: `type(scope): description (#issue_number)` (e.g., `feat(api): add pagination to results endpoint (#1)`).\n\n6. Push the branch to origin with `git push -u origin <branch_name>`.\n\n7. Create a Pull Request using the GitHub MCP tool (mcp_github_create_pull_request) with:\n   - title: A concise description of the changes\n   - head: The branch name you just pushed\n   - base: main\n   - body: Include a summary of changes, what was tested, and reference the issue with \"Closes #<issue_number>\" or \"Relates to #<issue_number>\"\n\nReport the PR URL to the user when complete."
+  }
+}

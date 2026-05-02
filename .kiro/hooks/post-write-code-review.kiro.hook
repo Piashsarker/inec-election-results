@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Post-Write Code Review",
+  "description": "After any write operation (file creation or modification), the agent reviews the changes against the spec requirements and design decisions. Validates that the code follows project conventions, handles errors properly, includes type annotations, and aligns with the architectural patterns defined in the spec.",
+  "version": "1",
+  "when": {
+    "type": "postToolUse",
+    "toolTypes": [
+      "write"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Review the code you just wrote or modified. Verify it against these criteria: 1) Follows the project's architectural patterns (async-first for backend, App Router for frontend). 2) Includes proper type annotations (Python type hints or TypeScript types). 3) Uses the project's error handling patterns (custom exceptions from backend/app/core/errors.py). 4) Follows the design decisions in the relevant spec's design.md. 5) Does not introduce any security issues (SQL injection, unvalidated input, exposed secrets). If any issues are found, fix them immediately."
+  }
+}
