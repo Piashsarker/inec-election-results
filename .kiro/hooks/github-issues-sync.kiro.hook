@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "GitHub Issues Sync",
+  "description": "Automatically pulls open GitHub issues from the repository when a prompt is submitted. This ensures the agent is always aware of current issues, bugs, and feature requests before starting any development work. The agent will check if the current task relates to any open issue and reference it accordingly.",
+  "version": "1",
+  "when": {
+    "type": "promptSubmit"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Before proceeding with the user's request, check if it relates to any open GitHub issues. Use the GitHub MCP tool (mcp_github_list_issues) to pull the latest open issues from the repository. If the user's request maps to an existing issue, reference that issue number and title in your response and ensure your implementation addresses the issue requirements. If creating new code or features, check if there's a related issue to link to. Follow the development specification guidelines in .kiro/steering/development-spec.md for all implementation work."
+  }
+}

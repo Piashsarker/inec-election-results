@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Run Tests After Task",
+  "description": "Runs the project's test suite after a spec task is completed to verify the implementation doesn't break existing functionality. Runs pytest for backend changes and npm run build for frontend changes.",
+  "version": "1",
+  "when": {
+    "type": "postTaskExecution"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "cd backend && python -m pytest tests/ --tb=short -q 2>&1 | tail -20",
+    "timeout": 120
+  }
+}

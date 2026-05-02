@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Spec Analysis Before Task",
+  "description": "Analyzes the relevant spec files (requirements.md, design.md, tasks.md) before starting any task execution. Ensures the agent understands the full context of what needs to be built, including correctness properties, acceptance criteria, and architectural decisions documented in the spec.",
+  "version": "1",
+  "when": {
+    "type": "preTaskExecution"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Before starting this task, read and analyze the relevant spec files in .kiro/specs/. Review the requirements.md for acceptance criteria and correctness properties, design.md for architectural decisions and file changes needed, and tasks.md for dependencies between tasks. Ensure your implementation will satisfy the spec's requirements and follow the design decisions. If the task involves code changes, identify which files need modification based on the design document."
+  }
+}

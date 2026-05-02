@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Code Analysis on Save",
+  "description": "Runs code analysis (linting with ruff for Python, type checking, and ESLint for TypeScript) after any code file is edited. Catches issues early by validating code quality immediately after changes are saved.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.py",
+      "**/*.ts",
+      "**/*.tsx"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "if echo \"$KIRO_FILE_PATH\" | grep -q '\\.py$'; then cd backend && python -m ruff check --fix \"$KIRO_FILE_PATH\" 2>&1; elif echo \"$KIRO_FILE_PATH\" | grep -qE '\\.(ts|tsx)$'; then cd frontend && npx next lint 2>&1; fi",
+    "timeout": 30
+  }
+}
