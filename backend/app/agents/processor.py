@@ -5,11 +5,13 @@ and data extraction from result sheet images.
 
 Requirements: 3.1, 3.2
 """
+from __future__ import annotations
+
 
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.agents.graph import AgentState, ProcessingStatus
 from app.core.extractor.parser import ElectionDataExtractor, ExtractionResult
@@ -28,11 +30,11 @@ class ProcessingResult:
         extraction_result: Data extraction result
         error: Error message if processing failed
     """
-    
+
     success: bool
-    ocr_result: Optional[OCROrchestrationResult] = None
-    extraction_result: Optional[ExtractionResult] = None
-    error: Optional[str] = None
+    ocr_result: OCROrchestrationResult | None = None
+    extraction_result: ExtractionResult | None = None
+    error: str | None = None
 
 
 class ProcessorAgent:
@@ -46,11 +48,11 @@ class ProcessorAgent:
     
     Requirements: 3.1, 3.2
     """
-    
+
     def __init__(
         self,
         quality_threshold: float = 0.7,
-        openai_api_key: Optional[str] = None,
+        openai_api_key: str | None = None,
         openai_model: str = "gpt-4o",
         tesseract_lang: str = "eng",
         enable_fallback: bool = True,
@@ -71,11 +73,11 @@ class ProcessorAgent:
             openai_model=openai_model,
             enable_fallback=enable_fallback,
         )
-        
+
         self.extractor = ElectionDataExtractor()
-        
+
         logger.info("ProcessorAgent initialized")
-    
+
     async def process_image(
         self,
         image_path: str,
@@ -94,7 +96,7 @@ class ProcessorAgent:
             ProcessingResult with OCR and extraction results
         """
         logger.info(f"Processing image: {image_path}")
-        
+
         try:
             # Verify file exists
             path = Path(image_path)
@@ -104,19 +106,19 @@ class ProcessorAgent:
                     success=False,
                     error=f"Image file not found: {image_path}",
                 )
-            
+
             # Perform OCR
             ocr_result = await self.ocr_orchestrator.process_async(
                 image_path=path,
                 engine=engine,
                 extract_structured=True,
             )
-            
+
             logger.info(
                 f"OCR completed with {ocr_result.engine_used.value}, "
                 f"confidence: {ocr_result.confidence:.2f}"
             )
-            
+
             # Extract structured data
             if ocr_result.raw_ocr_result:
                 # Use Tesseract OCR result
@@ -128,25 +130,25 @@ class ProcessorAgent:
             else:
                 # Fallback to text extraction
                 extraction_result = self.extractor.extract_from_text(ocr_result.text)
-            
+
             logger.info(
                 f"Extraction completed: {len(extraction_result.party_votes)} parties, "
                 f"confidence: {extraction_result.confidence:.2f}"
             )
-            
+
             return ProcessingResult(
                 success=True,
                 ocr_result=ocr_result,
                 extraction_result=extraction_result,
             )
-            
+
         except Exception as e:
             logger.error(f"Error processing image {image_path}: {e}")
             return ProcessingResult(
                 success=False,
                 error=str(e),
             )
-    
+
     def process_image_sync(
         self,
         image_path: str,
@@ -162,7 +164,7 @@ class ProcessorAgent:
             ProcessingResult with OCR and extraction results
         """
         logger.info(f"Processing image (sync): {image_path}")
-        
+
         try:
             # Verify file exists
             path = Path(image_path)
@@ -172,19 +174,19 @@ class ProcessorAgent:
                     success=False,
                     error=f"Image file not found: {image_path}",
                 )
-            
+
             # Perform OCR
             ocr_result = self.ocr_orchestrator.process(
                 image_path=path,
                 engine=engine,
                 extract_structured=True,
             )
-            
+
             logger.info(
                 f"OCR completed with {ocr_result.engine_used.value}, "
                 f"confidence: {ocr_result.confidence:.2f}"
             )
-            
+
             # Extract structured data
             if ocr_result.raw_ocr_result:
                 extraction_result = self.extractor.extract(ocr_result.raw_ocr_result)
@@ -192,20 +194,20 @@ class ProcessorAgent:
                 extraction_result = self._convert_vision_extraction(ocr_result.extraction)
             else:
                 extraction_result = self.extractor.extract_from_text(ocr_result.text)
-            
+
             return ProcessingResult(
                 success=True,
                 ocr_result=ocr_result,
                 extraction_result=extraction_result,
             )
-            
+
         except Exception as e:
             logger.error(f"Error processing image {image_path}: {e}")
             return ProcessingResult(
                 success=False,
                 error=str(e),
             )
-    
+
     async def process_state(
         self,
         state: AgentState,
@@ -222,7 +224,7 @@ class ProcessorAgent:
             Updated agent state
         """
         logger.info(f"Processing images for job {state['job_id']}")
-        
+
         # Check for downloaded images
         downloaded_images = state.get("downloaded_images", [])
         if not downloaded_images:
@@ -233,11 +235,11 @@ class ProcessorAgent:
             })
             state["status"] = ProcessingStatus.FAILED.value
             return state
-        
+
         # Process the first image (typically one per polling unit)
         image_info = downloaded_images[0]
         image_path = image_info.get("file_path")
-        
+
         if not image_path:
             state["errors"].append({
                 "stage": "process",
@@ -246,17 +248,17 @@ class ProcessorAgent:
             })
             state["status"] = ProcessingStatus.FAILED.value
             return state
-        
+
         # Update status to preprocessing
         state["status"] = ProcessingStatus.PREPROCESSING.value
-        
+
         # Process the image
         result = await self.process_image(image_path)
-        
+
         if result.success:
             # Update state with OCR results
             state["status"] = ProcessingStatus.OCR_PROCESSING.value
-            
+
             if result.ocr_result:
                 state["ocr_results"] = {
                     "text": result.ocr_result.text,
@@ -266,10 +268,10 @@ class ProcessorAgent:
                     "preprocessing_applied": result.ocr_result.preprocessing_applied,
                     "fallback_used": result.ocr_result.fallback_used,
                 }
-            
+
             # Update state with extraction results
             state["status"] = ProcessingStatus.EXTRACTING.value
-            
+
             if result.extraction_result:
                 state["extracted_data"] = {
                     "party_votes": [
@@ -302,9 +304,9 @@ class ProcessorAgent:
                 "recoverable": True,
             })
             state["status"] = ProcessingStatus.FAILED.value
-        
+
         return state
-    
+
     def _convert_vision_extraction(self, vision_result: Any) -> ExtractionResult:
         """Convert GPT-4 Vision extraction to ExtractionResult format.
         
@@ -315,7 +317,7 @@ class ProcessorAgent:
             ExtractionResult in standard format
         """
         from app.core.extractor.parser import PartyVote, SummaryFields
-        
+
         # Handle the case where vision_result is already an ExtractionResult-like object
         if hasattr(vision_result, 'parties'):
             party_votes = [
@@ -327,26 +329,26 @@ class ProcessorAgent:
                 )
                 for p in vision_result.parties
             ]
-            
+
             summary = SummaryFields(
                 accredited_voters=getattr(vision_result, 'accredited_voters', 0),
                 valid_votes=getattr(vision_result, 'valid_votes', 0),
                 rejected_votes=getattr(vision_result, 'rejected_votes', 0),
             )
-            
+
             return ExtractionResult(
                 party_votes=party_votes,
                 summary=summary,
                 confidence=getattr(vision_result, 'confidence', 0.8),
                 raw_text=getattr(vision_result, 'raw_response', ''),
             )
-        
+
         # Fallback for dictionary-like results
         return ExtractionResult(
             confidence=0.5,
             warnings=["Could not parse vision extraction result"],
         )
-    
+
     def select_ocr_engine(self, quality_score: float) -> OCREngine:
         """Select appropriate OCR engine based on image quality.
         
@@ -359,8 +361,8 @@ class ProcessorAgent:
         if quality_score >= self.ocr_orchestrator.quality_threshold:
             return OCREngine.TESSERACT
         return OCREngine.GPT4_VISION
-    
-    def get_engine_status(self) -> Dict[str, Any]:
+
+    def get_engine_status(self) -> dict[str, Any]:
         """Get status of available OCR engines.
         
         Returns:

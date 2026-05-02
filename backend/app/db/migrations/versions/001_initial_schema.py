@@ -11,26 +11,28 @@ This migration creates all tables for the INEC Election Results Agent:
 - Election data: election_types, political_parties, election_results, party_results
 - Job management: scraping_jobs, job_logs, flagged_results
 """
-from typing import Sequence, Union
+from __future__ import annotations
 
-from alembic import op
+from collections.abc import Sequence
+
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "001"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
     """Create all tables with indexes and constraints."""
-    
+
     # ===========================================
     # Geographic Hierarchy Tables
     # ===========================================
-    
+
     # States table
     op.create_table(
         "states",
@@ -46,7 +48,7 @@ def upgrade() -> None:
         ),
     )
     op.create_index("idx_states_name", "states", ["name"])
-    
+
     # LGAs table
     op.create_table(
         "lgas",
@@ -69,7 +71,7 @@ def upgrade() -> None:
     )
     op.create_index("idx_lgas_state", "lgas", ["state_id"])
     op.create_unique_constraint("uq_lga_state_code", "lgas", ["state_id", "code"])
-    
+
     # Wards table
     op.create_table(
         "wards",
@@ -92,7 +94,7 @@ def upgrade() -> None:
     )
     op.create_index("idx_wards_lga", "wards", ["lga_id"])
     op.create_unique_constraint("uq_ward_lga_code", "wards", ["lga_id", "code"])
-    
+
     # Polling Units table
     op.create_table(
         "polling_units",
@@ -117,11 +119,11 @@ def upgrade() -> None:
     op.create_unique_constraint(
         "uq_polling_unit_ward_code", "polling_units", ["ward_id", "code"]
     )
-    
+
     # ===========================================
     # Election Data Tables
     # ===========================================
-    
+
     # Election Types table
     op.create_table(
         "election_types",
@@ -135,7 +137,7 @@ def upgrade() -> None:
             nullable=False,
         ),
     )
-    
+
     # Political Parties table
     op.create_table(
         "political_parties",
@@ -150,7 +152,7 @@ def upgrade() -> None:
             nullable=False,
         ),
     )
-    
+
     # Election Results table
     op.create_table(
         "election_results",
@@ -198,7 +200,7 @@ def upgrade() -> None:
         "election_results",
         ["election_type_id", "polling_unit_id"],
     )
-    
+
     # Party Results table
     op.create_table(
         "party_results",
@@ -231,11 +233,11 @@ def upgrade() -> None:
         "party_results",
         ["election_result_id", "party_id"],
     )
-    
+
     # ===========================================
     # Job Management Tables
     # ===========================================
-    
+
     # Scraping Jobs table
     op.create_table(
         "scraping_jobs",
@@ -261,7 +263,7 @@ def upgrade() -> None:
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
     )
     op.create_index("idx_scraping_jobs_status", "scraping_jobs", ["status"])
-    
+
     # Job Logs table
     op.create_table(
         "job_logs",
@@ -283,7 +285,7 @@ def upgrade() -> None:
         ),
     )
     op.create_index("idx_job_logs_job", "job_logs", ["job_id"])
-    
+
     # Flagged Results table
     op.create_table(
         "flagged_results",
@@ -315,13 +317,13 @@ def downgrade() -> None:
     op.drop_table("flagged_results")
     op.drop_table("job_logs")
     op.drop_table("scraping_jobs")
-    
+
     # Election data tables
     op.drop_table("party_results")
     op.drop_table("election_results")
     op.drop_table("political_parties")
     op.drop_table("election_types")
-    
+
     # Geographic hierarchy tables
     op.drop_table("polling_units")
     op.drop_table("wards")

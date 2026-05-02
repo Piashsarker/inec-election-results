@@ -11,7 +11,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     DateTime,
@@ -61,7 +61,7 @@ class ElectionType(BaseModel):
     )
 
     # Relationships
-    election_results: Mapped[List["ElectionResult"]] = relationship(
+    election_results: Mapped[list[ElectionResult]] = relationship(
         "ElectionResult",
         back_populates="election_type",
         cascade="all, delete-orphan",
@@ -97,13 +97,13 @@ class PoliticalParty(BaseModel):
         nullable=False,
         unique=True,
     )
-    logo_url: Mapped[Optional[str]] = mapped_column(
+    logo_url: Mapped[str | None] = mapped_column(
         String(500),
         nullable=True,
     )
 
     # Relationships
-    party_results: Mapped[List["PartyResult"]] = relationship(
+    party_results: Mapped[list[PartyResult]] = relationship(
         "PartyResult",
         back_populates="party",
         cascade="all, delete-orphan",
@@ -171,7 +171,7 @@ class ElectionResult(BaseModel):
         Numeric(3, 2),
         default=Decimal("0.00"),
     )
-    source_image_path: Mapped[Optional[str]] = mapped_column(
+    source_image_path: Mapped[str | None] = mapped_column(
         String(500),
         nullable=True,
     )
@@ -188,21 +188,21 @@ class ElectionResult(BaseModel):
     )
 
     # Relationships
-    election_type: Mapped["ElectionType"] = relationship(
+    election_type: Mapped[ElectionType] = relationship(
         "ElectionType",
         back_populates="election_results",
     )
-    polling_unit: Mapped["PollingUnit"] = relationship(
+    polling_unit: Mapped[PollingUnit] = relationship(
         "PollingUnit",
         back_populates="election_results",
     )
-    party_results: Mapped[List["PartyResult"]] = relationship(
+    party_results: Mapped[list[PartyResult]] = relationship(
         "PartyResult",
         back_populates="election_result",
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    flagged_results: Mapped[List["FlaggedResult"]] = relationship(
+    flagged_results: Mapped[list[FlaggedResult]] = relationship(
         "FlaggedResult",
         back_populates="election_result",
         cascade="all, delete-orphan",
@@ -263,11 +263,11 @@ class PartyResult(BaseModel):
     )
 
     # Relationships
-    election_result: Mapped["ElectionResult"] = relationship(
+    election_result: Mapped[ElectionResult] = relationship(
         "ElectionResult",
         back_populates="party_results",
     )
-    party: Mapped["PoliticalParty"] = relationship(
+    party: Mapped[PoliticalParty] = relationship(
         "PoliticalParty",
         back_populates="party_results",
     )

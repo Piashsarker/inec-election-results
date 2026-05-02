@@ -4,8 +4,9 @@ Provides endpoints for viewing and managing election results.
 
 Requirements: 4.6, 3.6
 """
+from __future__ import annotations
 
-from typing import List, Optional
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -15,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.session import get_async_session
-from app.models import ElectionResult, FlaggedResult, PartyResult
+from app.models import ElectionResult, FlaggedResult
 
 router = APIRouter()
 
@@ -40,8 +41,8 @@ class ElectionResultResponse(BaseModel):
     valid_votes: int
     rejected_votes: int
     confidence_score: float
-    source_image_path: Optional[str]
-    party_results: List[PartyResultResponse] = []
+    source_image_path: str | None
+    party_results: list[PartyResultResponse] = []
 
     class Config:
         from_attributes = True
@@ -63,14 +64,14 @@ class FlaggedResultResponse(BaseModel):
         from_attributes = True
 
 
-@router.get("", response_model=List[ElectionResultResponse])
+@router.get("", response_model=list[ElectionResultResponse])
 async def get_results(
-    election_type_id: Optional[UUID] = Query(None),
-    polling_unit_id: Optional[UUID] = Query(None),
+    election_type_id: UUID | None = Query(None),
+    polling_unit_id: UUID | None = Query(None),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_async_session),
-) -> List[ElectionResultResponse]:
+) -> list[ElectionResultResponse]:
     """Get election results with optional filtering.
     
     Args:
@@ -83,17 +84,17 @@ async def get_results(
         List of election results
     """
     query = select(ElectionResult).options(selectinload(ElectionResult.party_results))
-    
+
     if election_type_id:
         query = query.where(ElectionResult.election_type_id == election_type_id)
     if polling_unit_id:
         query = query.where(ElectionResult.polling_unit_id == polling_unit_id)
-    
+
     query = query.limit(limit).offset(offset)
-    
+
     result = await session.execute(query)
     results = result.scalars().all()
-    
+
     return [ElectionResultResponse.model_validate(r) for r in results]
 
 
@@ -116,10 +117,10 @@ async def get_result(
         .where(ElectionResult.id == result_id)
     )
     election_result = result.scalar_one_or_none()
-    
+
     if not election_result:
         raise HTTPException(status_code=404, detail="Result not found")
-    
+
     return ElectionResultResponse.model_validate(election_result)
 
 
@@ -144,7 +145,7 @@ async def flag_result(
     )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Result not found")
-    
+
     # Create flagged result
     flagged = FlaggedResult(
         election_result_id=result_id,
@@ -154,5 +155,5 @@ async def flag_result(
     session.add(flagged)
     await session.commit()
     await session.refresh(flagged)
-    
+
     return FlaggedResultResponse.model_validate(flagged)

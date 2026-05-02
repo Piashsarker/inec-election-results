@@ -10,21 +10,22 @@ This migration creates SQL views for aggregating election results:
 - ward_aggregation: Aggregates votes by party at ward level
 - lga_aggregation: Aggregates votes by party at LGA level
 """
-from typing import Sequence, Union
+from __future__ import annotations
+
+from collections.abc import Sequence
 
 from alembic import op
 
-
 # revision identifiers, used by Alembic.
 revision: str = "002"
-down_revision: Union[str, None] = "001"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "001"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
     """Create aggregation views for ward and LGA levels."""
-    
+
     # ===========================================
     # Ward-level aggregation view
     # ===========================================
@@ -33,7 +34,7 @@ def upgrade() -> None:
     # - Sums vote_count across all polling units in the ward
     # - Calculates percentage of total valid votes
     # - Counts total polling units, processed polling units, flagged results
-    
+
     op.execute("""
         CREATE VIEW ward_aggregation AS
         WITH ward_totals AS (
@@ -89,7 +90,7 @@ def upgrade() -> None:
             pp.id, pp.code, pp.name,
             wt.total_valid_votes, wt.processed_polling_units, wt.flagged_results
     """)
-    
+
     # ===========================================
     # LGA-level aggregation view
     # ===========================================
@@ -98,7 +99,7 @@ def upgrade() -> None:
     # - Sums vote_count across all wards in the LGA
     # - Calculates percentage of total valid votes
     # - Counts total polling units, processed polling units, flagged results
-    
+
     op.execute("""
         CREATE VIEW lga_aggregation AS
         WITH lga_totals AS (

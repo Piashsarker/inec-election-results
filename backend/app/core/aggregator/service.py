@@ -11,7 +11,6 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import List, Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -64,7 +63,7 @@ class AggregationResult:
     location_name: str
     election_type_id: uuid.UUID
     election_type_code: str
-    party_results: List[PartyAggregation] = field(default_factory=list)
+    party_results: list[PartyAggregation] = field(default_factory=list)
     total_valid_votes: int = 0
     total_accredited_voters: int = 0
     total_rejected_votes: int = 0
@@ -88,7 +87,7 @@ class AggregationService:
         - 5.5: Report total polling units included in aggregation
         - 5.6: Report polling units with missing or flagged results
     """
-    
+
     def __init__(self, session: AsyncSession):
         """Initialize the aggregation service.
         
@@ -96,12 +95,12 @@ class AggregationService:
             session: Async SQLAlchemy database session
         """
         self.session = session
-    
+
     async def aggregate_ward(
         self,
         ward_id: uuid.UUID,
         election_type_id: uuid.UUID,
-    ) -> Optional[AggregationResult]:
+    ) -> AggregationResult | None:
         """Aggregate election results at ward level.
         
         Sums vote counts by party across all polling units in the specified ward.
@@ -119,23 +118,23 @@ class AggregationService:
         ward_query = select(Ward).where(Ward.id == ward_id)
         ward_result = await self.session.execute(ward_query)
         ward = ward_result.scalar_one_or_none()
-        
+
         if ward is None:
             return None
-        
+
         # Get election type details
         election_type_query = select(ElectionType).where(ElectionType.id == election_type_id)
         election_type_result = await self.session.execute(election_type_query)
         election_type = election_type_result.scalar_one_or_none()
-        
+
         if election_type is None:
             return None
-        
+
         # Get polling unit IDs in this ward
         pu_query = select(PollingUnit.id).where(PollingUnit.ward_id == ward_id)
         pu_result = await self.session.execute(pu_query)
         polling_unit_ids = [row[0] for row in pu_result.fetchall()]
-        
+
         return await self._aggregate_for_polling_units(
             level="ward",
             location_id=ward_id,
@@ -145,12 +144,12 @@ class AggregationService:
             polling_unit_ids=polling_unit_ids,
             total_polling_units=ward.total_polling_units,
         )
-    
+
     async def aggregate_lga(
         self,
         lga_id: uuid.UUID,
         election_type_id: uuid.UUID,
-    ) -> Optional[AggregationResult]:
+    ) -> AggregationResult | None:
         """Aggregate election results at LGA level.
         
         Sums vote counts by party across all wards (and their polling units) in the LGA.
@@ -168,18 +167,18 @@ class AggregationService:
         lga_query = select(LGA).where(LGA.id == lga_id)
         lga_result = await self.session.execute(lga_query)
         lga = lga_result.scalar_one_or_none()
-        
+
         if lga is None:
             return None
-        
+
         # Get election type details
         election_type_query = select(ElectionType).where(ElectionType.id == election_type_id)
         election_type_result = await self.session.execute(election_type_query)
         election_type = election_type_result.scalar_one_or_none()
-        
+
         if election_type is None:
             return None
-        
+
         # Get all polling unit IDs in this LGA (through wards)
         pu_query = (
             select(PollingUnit.id)
@@ -188,7 +187,7 @@ class AggregationService:
         )
         pu_result = await self.session.execute(pu_query)
         polling_unit_ids = [row[0] for row in pu_result.fetchall()]
-        
+
         # Calculate total polling units in LGA
         total_pu_query = (
             select(func.sum(Ward.total_polling_units))
@@ -196,7 +195,7 @@ class AggregationService:
         )
         total_pu_result = await self.session.execute(total_pu_query)
         total_polling_units = total_pu_result.scalar() or 0
-        
+
         return await self._aggregate_for_polling_units(
             level="lga",
             location_id=lga_id,
@@ -206,12 +205,12 @@ class AggregationService:
             polling_unit_ids=polling_unit_ids,
             total_polling_units=total_polling_units,
         )
-    
+
     async def aggregate_state(
         self,
         state_id: uuid.UUID,
         election_type_id: uuid.UUID,
-    ) -> Optional[AggregationResult]:
+    ) -> AggregationResult | None:
         """Aggregate election results at state level.
         
         Sums vote counts by party across all LGAs (and their wards/polling units) in the state.
@@ -229,18 +228,18 @@ class AggregationService:
         state_query = select(State).where(State.id == state_id)
         state_result = await self.session.execute(state_query)
         state = state_result.scalar_one_or_none()
-        
+
         if state is None:
             return None
-        
+
         # Get election type details
         election_type_query = select(ElectionType).where(ElectionType.id == election_type_id)
         election_type_result = await self.session.execute(election_type_query)
         election_type = election_type_result.scalar_one_or_none()
-        
+
         if election_type is None:
             return None
-        
+
         # Get all polling unit IDs in this state (through LGAs and wards)
         pu_query = (
             select(PollingUnit.id)
@@ -250,7 +249,7 @@ class AggregationService:
         )
         pu_result = await self.session.execute(pu_query)
         polling_unit_ids = [row[0] for row in pu_result.fetchall()]
-        
+
         # Calculate total polling units in state
         total_pu_query = (
             select(func.sum(Ward.total_polling_units))
@@ -259,7 +258,7 @@ class AggregationService:
         )
         total_pu_result = await self.session.execute(total_pu_query)
         total_polling_units = total_pu_result.scalar() or 0
-        
+
         return await self._aggregate_for_polling_units(
             level="state",
             location_id=state_id,
@@ -269,7 +268,7 @@ class AggregationService:
             polling_unit_ids=polling_unit_ids,
             total_polling_units=total_polling_units,
         )
-    
+
     async def _aggregate_for_polling_units(
         self,
         level: str,
@@ -277,7 +276,7 @@ class AggregationService:
         location_name: str,
         election_type_id: uuid.UUID,
         election_type_code: str,
-        polling_unit_ids: List[uuid.UUID],
+        polling_unit_ids: list[uuid.UUID],
         total_polling_units: int,
     ) -> AggregationResult:
         """Aggregate results for a list of polling units.
@@ -305,7 +304,7 @@ class AggregationService:
                 election_type_code=election_type_code,
                 total_polling_units=total_polling_units,
             )
-        
+
         # Get election results for these polling units
         results_query = (
             select(ElectionResult)
@@ -316,25 +315,25 @@ class AggregationService:
         )
         results_result = await self.session.execute(results_query)
         election_results = results_result.scalars().all()
-        
+
         # Calculate totals from election results
         total_valid_votes = sum(er.valid_votes for er in election_results)
         total_accredited_voters = sum(er.accredited_voters for er in election_results)
         total_rejected_votes = sum(er.rejected_votes for er in election_results)
         processed_polling_units = len(election_results)
-        
+
         # Get election result IDs for party result aggregation
         election_result_ids = [er.id for er in election_results]
-        
+
         # Aggregate party votes
         party_aggregations = await self._aggregate_party_votes(
             election_result_ids=election_result_ids,
             total_valid_votes=total_valid_votes,
         )
-        
+
         # Count flagged results
         flagged_count = await self._count_flagged_results(election_result_ids)
-        
+
         return AggregationResult(
             level=level,
             location_id=location_id,
@@ -349,12 +348,12 @@ class AggregationService:
             processed_polling_units=processed_polling_units,
             flagged_polling_units=flagged_count,
         )
-    
+
     async def _aggregate_party_votes(
         self,
-        election_result_ids: List[uuid.UUID],
+        election_result_ids: list[uuid.UUID],
         total_valid_votes: int,
-    ) -> List[PartyAggregation]:
+    ) -> list[PartyAggregation]:
         """Aggregate votes by party and calculate percentages and rankings.
         
         Args:
@@ -368,7 +367,7 @@ class AggregationService:
         """
         if not election_result_ids:
             return []
-        
+
         # Query to sum votes by party
         party_votes_query = (
             select(
@@ -382,23 +381,23 @@ class AggregationService:
             .group_by(PoliticalParty.id, PoliticalParty.name, PoliticalParty.code)
             .order_by(func.sum(PartyResult.vote_count).desc())
         )
-        
+
         party_votes_result = await self.session.execute(party_votes_query)
         party_rows = party_votes_result.fetchall()
-        
+
         # Build party aggregations with percentages and rankings
-        party_aggregations: List[PartyAggregation] = []
-        
+        party_aggregations: list[PartyAggregation] = []
+
         for rank, row in enumerate(party_rows, start=1):
             party_id, party_name, party_code, votes = row
-            
+
             # Calculate percentage (avoid division by zero)
             percentage = Decimal("0.00")
             if total_valid_votes > 0:
                 percentage = Decimal(str(votes * 100 / total_valid_votes)).quantize(
                     Decimal("0.01")
                 )
-            
+
             party_aggregations.append(
                 PartyAggregation(
                     party_id=party_id,
@@ -409,12 +408,12 @@ class AggregationService:
                     rank=rank,
                 )
             )
-        
+
         return party_aggregations
-    
+
     async def _count_flagged_results(
         self,
-        election_result_ids: List[uuid.UUID],
+        election_result_ids: list[uuid.UUID],
     ) -> int:
         """Count the number of flagged results.
         
@@ -428,14 +427,14 @@ class AggregationService:
         """
         if not election_result_ids:
             return 0
-        
+
         flagged_query = (
             select(func.count(FlaggedResult.id))
             .where(FlaggedResult.election_result_id.in_(election_result_ids))
         )
         flagged_result = await self.session.execute(flagged_query)
         return flagged_result.scalar() or 0
-    
+
     @staticmethod
     def calculate_percentage(votes: int, total_votes: int) -> Decimal:
         """Calculate vote percentage.
@@ -452,9 +451,9 @@ class AggregationService:
         if total_votes <= 0:
             return Decimal("0.00")
         return Decimal(str(votes * 100 / total_votes)).quantize(Decimal("0.01"))
-    
+
     @staticmethod
-    def rank_parties(party_results: List[PartyAggregation]) -> List[PartyAggregation]:
+    def rank_parties(party_results: list[PartyAggregation]) -> list[PartyAggregation]:
         """Rank parties by vote count in descending order.
         
         Args:
@@ -471,9 +470,9 @@ class AggregationService:
             key=lambda p: p.total_votes,
             reverse=True,
         )
-        
+
         # Assign ranks
         for rank, party in enumerate(sorted_results, start=1):
             party.rank = rank
-        
+
         return sorted_results

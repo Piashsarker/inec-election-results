@@ -9,7 +9,7 @@ Requirements: 4.1, 4.6
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
@@ -56,7 +56,7 @@ class State(BaseModel):
     )
 
     # Relationships
-    lgas: Mapped[List["LGA"]] = relationship(
+    lgas: Mapped[list[LGA]] = relationship(
         "LGA",
         back_populates="state",
         cascade="all, delete-orphan",
@@ -107,11 +107,11 @@ class LGA(BaseModel):
     )
 
     # Relationships
-    state: Mapped["State"] = relationship(
+    state: Mapped[State] = relationship(
         "State",
         back_populates="lgas",
     )
-    wards: Mapped[List["Ward"]] = relationship(
+    wards: Mapped[list[Ward]] = relationship(
         "Ward",
         back_populates="lga",
         cascade="all, delete-orphan",
@@ -166,11 +166,11 @@ class Ward(BaseModel):
     )
 
     # Relationships
-    lga: Mapped["LGA"] = relationship(
+    lga: Mapped[LGA] = relationship(
         "LGA",
         back_populates="wards",
     )
-    polling_units: Mapped[List["PollingUnit"]] = relationship(
+    polling_units: Mapped[list[PollingUnit]] = relationship(
         "PollingUnit",
         back_populates="ward",
         cascade="all, delete-orphan",
@@ -218,17 +218,17 @@ class PollingUnit(BaseModel):
         String(50),
         nullable=False,
     )
-    delimitation: Mapped[Optional[str]] = mapped_column(
+    delimitation: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
     )
 
     # Relationships
-    ward: Mapped["Ward"] = relationship(
+    ward: Mapped[Ward] = relationship(
         "Ward",
         back_populates="polling_units",
     )
-    election_results: Mapped[List["ElectionResult"]] = relationship(
+    election_results: Mapped[list[ElectionResult]] = relationship(
         "ElectionResult",
         back_populates="polling_unit",
         cascade="all, delete-orphan",

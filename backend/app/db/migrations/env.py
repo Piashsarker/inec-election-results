@@ -24,15 +24,14 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.config import settings
-from app.models.base import Base
 
 # Import all models to ensure they are registered with Base.metadata
 from app.models import (  # noqa: F401
+    LGA,
     ElectionResult,
     ElectionType,
     FlaggedResult,
     JobLog,
-    LGA,
     PartyResult,
     PoliticalParty,
     PollingUnit,
@@ -40,6 +39,7 @@ from app.models import (  # noqa: F401
     State,
     Ward,
 )
+from app.models.base import Base
 
 # This is the Alembic Config object
 config = context.config

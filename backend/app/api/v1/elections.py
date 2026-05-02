@@ -9,8 +9,9 @@ Provides endpoints for navigating the election hierarchy:
 
 Requirements: 1.2, 1.3, 1.4, 1.5, 1.6
 """
+from __future__ import annotations
 
-from typing import List
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,7 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_async_session
-from app.models import ElectionType, LGA, PollingUnit, State, Ward
+from app.models import LGA, ElectionType, PollingUnit, State, Ward
 
 router = APIRouter()
 
@@ -82,10 +83,10 @@ class PollingUnitResponse(BaseModel):
         from_attributes = True
 
 
-@router.get("/types", response_model=List[ElectionTypeResponse])
+@router.get("/types", response_model=list[ElectionTypeResponse])
 async def get_election_types(
     session: AsyncSession = Depends(get_async_session),
-) -> List[ElectionTypeResponse]:
+) -> list[ElectionTypeResponse]:
     """Get all available election types.
     
     Returns:
@@ -96,11 +97,11 @@ async def get_election_types(
     return [ElectionTypeResponse.model_validate(et) for et in election_types]
 
 
-@router.get("/{election_type}/states", response_model=List[StateResponse])
+@router.get("/{election_type}/states", response_model=list[StateResponse])
 async def get_states(
     election_type: str,
     session: AsyncSession = Depends(get_async_session),
-) -> List[StateResponse]:
+) -> list[StateResponse]:
     """Get all states for an election type.
     
     Args:
@@ -115,18 +116,18 @@ async def get_states(
     )
     if not et_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail=f"Election type '{election_type}' not found")
-    
+
     result = await session.execute(select(State).order_by(State.name))
     states = result.scalars().all()
     return [StateResponse.model_validate(s) for s in states]
 
 
-@router.get("/{election_type}/{state}/lgas", response_model=List[LGAResponse])
+@router.get("/{election_type}/{state}/lgas", response_model=list[LGAResponse])
 async def get_lgas(
     election_type: str,
     state: str,
     session: AsyncSession = Depends(get_async_session),
-) -> List[LGAResponse]:
+) -> list[LGAResponse]:
     """Get all LGAs for a state.
     
     Args:
@@ -143,7 +144,7 @@ async def get_lgas(
     state_obj = state_result.scalar_one_or_none()
     if not state_obj:
         raise HTTPException(status_code=404, detail=f"State '{state}' not found")
-    
+
     result = await session.execute(
         select(LGA).where(LGA.state_id == state_obj.id).order_by(LGA.name)
     )
@@ -151,13 +152,13 @@ async def get_lgas(
     return [LGAResponse.model_validate(l) for l in lgas]
 
 
-@router.get("/{election_type}/{state}/{lga}/wards", response_model=List[WardResponse])
+@router.get("/{election_type}/{state}/{lga}/wards", response_model=list[WardResponse])
 async def get_wards(
     election_type: str,
     state: str,
     lga: str,
     session: AsyncSession = Depends(get_async_session),
-) -> List[WardResponse]:
+) -> list[WardResponse]:
     """Get all wards for an LGA.
     
     Args:
@@ -175,7 +176,7 @@ async def get_wards(
     state_obj = state_result.scalar_one_or_none()
     if not state_obj:
         raise HTTPException(status_code=404, detail=f"State '{state}' not found")
-    
+
     # Get LGA
     lga_result = await session.execute(
         select(LGA).where(LGA.state_id == state_obj.id, LGA.code == lga)
@@ -183,7 +184,7 @@ async def get_wards(
     lga_obj = lga_result.scalar_one_or_none()
     if not lga_obj:
         raise HTTPException(status_code=404, detail=f"LGA '{lga}' not found in state '{state}'")
-    
+
     result = await session.execute(
         select(Ward).where(Ward.lga_id == lga_obj.id).order_by(Ward.name)
     )
@@ -193,7 +194,7 @@ async def get_wards(
 
 @router.get(
     "/{election_type}/{state}/{lga}/{ward}/polling-units",
-    response_model=List[PollingUnitResponse],
+    response_model=list[PollingUnitResponse],
 )
 async def get_polling_units(
     election_type: str,
@@ -201,7 +202,7 @@ async def get_polling_units(
     lga: str,
     ward: str,
     session: AsyncSession = Depends(get_async_session),
-) -> List[PollingUnitResponse]:
+) -> list[PollingUnitResponse]:
     """Get all polling units for a ward.
     
     Args:
@@ -220,7 +221,7 @@ async def get_polling_units(
     state_obj = state_result.scalar_one_or_none()
     if not state_obj:
         raise HTTPException(status_code=404, detail=f"State '{state}' not found")
-    
+
     # Get LGA
     lga_result = await session.execute(
         select(LGA).where(LGA.state_id == state_obj.id, LGA.code == lga)
@@ -228,7 +229,7 @@ async def get_polling_units(
     lga_obj = lga_result.scalar_one_or_none()
     if not lga_obj:
         raise HTTPException(status_code=404, detail=f"LGA '{lga}' not found")
-    
+
     # Get Ward
     ward_result = await session.execute(
         select(Ward).where(Ward.lga_id == lga_obj.id, Ward.code == ward)
@@ -236,7 +237,7 @@ async def get_polling_units(
     ward_obj = ward_result.scalar_one_or_none()
     if not ward_obj:
         raise HTTPException(status_code=404, detail=f"Ward '{ward}' not found")
-    
+
     result = await session.execute(
         select(PollingUnit).where(PollingUnit.ward_id == ward_obj.id).order_by(PollingUnit.name)
     )

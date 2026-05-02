@@ -6,11 +6,12 @@ noise removal, contrast enhancement, and quality assessment.
 
 Requirements: 3.1
 """
+from __future__ import annotations
+
 
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Tuple, Union
 
 import cv2
 import numpy as np
@@ -19,7 +20,7 @@ from PIL import Image
 
 class ImageFormat(str, Enum):
     """Supported image formats."""
-    
+
     PNG = "png"
     JPEG = "jpeg"
     PDF = "pdf"
@@ -37,14 +38,14 @@ class QualityScore:
         overall_score: Combined quality score (0-1)
         recommended_engine: Suggested OCR engine based on quality
     """
-    
+
     sharpness: float
     contrast: float
     noise_level: float
     text_density: float
     overall_score: float
     recommended_engine: str
-    
+
     def is_high_quality(self, threshold: float = 0.7) -> bool:
         """Check if image quality is above threshold."""
         return self.overall_score >= threshold
@@ -61,9 +62,9 @@ class ProcessedImage:
         preprocessing_applied: List of preprocessing steps applied
         deskew_angle: Rotation angle applied for deskewing (degrees)
     """
-    
+
     image: np.ndarray
-    original_path: Optional[str]
+    original_path: str | None
     quality_score: QualityScore
     preprocessing_applied: list[str]
     deskew_angle: float
@@ -85,18 +86,18 @@ class ImagePreprocessor:
     
     Requirements: 3.1
     """
-    
+
     # Quality thresholds for engine selection
     HIGH_QUALITY_THRESHOLD = 0.7
     SHARPNESS_THRESHOLD = 100.0
     CONTRAST_THRESHOLD = 0.3
     NOISE_THRESHOLD = 0.3
-    
+
     def __init__(
         self,
         quality_threshold: float = 0.7,
         clahe_clip_limit: float = 2.0,
-        clahe_tile_size: Tuple[int, int] = (8, 8),
+        clahe_tile_size: tuple[int, int] = (8, 8),
         gaussian_kernel_size: int = 5,
         denoise_strength: int = 10,
     ):
@@ -114,10 +115,10 @@ class ImagePreprocessor:
         self.clahe_tile_size = clahe_tile_size
         self.gaussian_kernel_size = gaussian_kernel_size
         self.denoise_strength = denoise_strength
-    
+
     def preprocess(
         self,
-        image_path: Union[str, Path],
+        image_path: str | Path,
         apply_deskew: bool = True,
         apply_denoise: bool = True,
         apply_contrast: bool = True,
@@ -149,44 +150,44 @@ class ImagePreprocessor:
         image_path = Path(image_path)
         if not image_path.exists():
             raise FileNotFoundError(f"Image not found: {image_path}")
-        
+
         # Load image
         image = self._load_image(image_path)
         if image is None:
             raise ValueError(f"Failed to load image: {image_path}")
-        
+
         preprocessing_applied = []
         deskew_angle = 0.0
-        
+
         # Step 1: Convert to grayscale
         if len(image.shape) == 3:
             image = self._to_grayscale(image)
             preprocessing_applied.append("grayscale")
-        
+
         # Step 2: Deskew
         if apply_deskew:
             image, deskew_angle = self._deskew(image)
             if abs(deskew_angle) > 0.1:
                 preprocessing_applied.append(f"deskew({deskew_angle:.2f}°)")
-        
+
         # Step 3: Denoise
         if apply_denoise:
             image = self._remove_noise(image)
             preprocessing_applied.append("denoise")
-        
+
         # Step 4: Contrast enhancement
         if apply_contrast:
             image = self._enhance_contrast(image)
             preprocessing_applied.append("contrast_enhance")
-        
+
         # Step 5: Binarization (optional)
         if apply_binarize:
             image = self._binarize(image)
             preprocessing_applied.append("binarize")
-        
+
         # Assess quality
         quality_score = self.assess_quality(image)
-        
+
         return ProcessedImage(
             image=image,
             original_path=str(image_path),
@@ -194,7 +195,7 @@ class ImagePreprocessor:
             preprocessing_applied=preprocessing_applied,
             deskew_angle=deskew_angle,
         )
-    
+
     def preprocess_array(
         self,
         image: np.ndarray,
@@ -217,36 +218,36 @@ class ImagePreprocessor:
         """
         preprocessing_applied = []
         deskew_angle = 0.0
-        
+
         # Step 1: Convert to grayscale
         if len(image.shape) == 3:
             image = self._to_grayscale(image)
             preprocessing_applied.append("grayscale")
-        
+
         # Step 2: Deskew
         if apply_deskew:
             image, deskew_angle = self._deskew(image)
             if abs(deskew_angle) > 0.1:
                 preprocessing_applied.append(f"deskew({deskew_angle:.2f}°)")
-        
+
         # Step 3: Denoise
         if apply_denoise:
             image = self._remove_noise(image)
             preprocessing_applied.append("denoise")
-        
+
         # Step 4: Contrast enhancement
         if apply_contrast:
             image = self._enhance_contrast(image)
             preprocessing_applied.append("contrast_enhance")
-        
+
         # Step 5: Binarization (optional)
         if apply_binarize:
             image = self._binarize(image)
             preprocessing_applied.append("binarize")
-        
+
         # Assess quality
         quality_score = self.assess_quality(image)
-        
+
         return ProcessedImage(
             image=image,
             original_path=None,
@@ -254,7 +255,7 @@ class ImagePreprocessor:
             preprocessing_applied=preprocessing_applied,
             deskew_angle=deskew_angle,
         )
-    
+
     def assess_quality(self, image: np.ndarray) -> QualityScore:
         """Assess image quality for OCR engine selection.
         
@@ -273,23 +274,23 @@ class ImagePreprocessor:
         # Ensure grayscale
         if len(image.shape) == 3:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        
+
         # Calculate sharpness using Laplacian variance
         sharpness = self._calculate_sharpness(image)
-        
+
         # Calculate contrast ratio
         contrast = self._calculate_contrast(image)
-        
+
         # Estimate noise level
         noise_level = self._estimate_noise(image)
-        
+
         # Estimate text density
         text_density = self._estimate_text_density(image)
-        
+
         # Calculate overall score (weighted combination)
         # Normalize sharpness to 0-1 range (assuming max useful sharpness ~500)
         normalized_sharpness = min(sharpness / 500.0, 1.0)
-        
+
         overall_score = (
             0.35 * normalized_sharpness +
             0.25 * contrast +
@@ -297,13 +298,13 @@ class ImagePreprocessor:
             0.15 * text_density
         )
         overall_score = max(0.0, min(1.0, overall_score))
-        
+
         # Determine recommended engine
         if overall_score >= self.quality_threshold:
             recommended_engine = "tesseract"
         else:
             recommended_engine = "gpt4_vision"
-        
+
         return QualityScore(
             sharpness=sharpness,
             contrast=contrast,
@@ -312,8 +313,8 @@ class ImagePreprocessor:
             overall_score=overall_score,
             recommended_engine=recommended_engine,
         )
-    
-    def _load_image(self, image_path: Path) -> Optional[np.ndarray]:
+
+    def _load_image(self, image_path: Path) -> np.ndarray | None:
         """Load image from file path.
         
         Supports common image formats (PNG, JPEG, etc.) and PDF first page.
@@ -325,23 +326,23 @@ class ImagePreprocessor:
             Image as numpy array or None if loading fails
         """
         suffix = image_path.suffix.lower()
-        
+
         if suffix == ".pdf":
             return self._load_pdf_first_page(image_path)
-        
+
         # Use OpenCV for standard image formats
         image = cv2.imread(str(image_path))
         if image is not None:
             return image
-        
+
         # Fallback to PIL for other formats
         try:
             pil_image = Image.open(image_path)
             return np.array(pil_image.convert("RGB"))
         except Exception:
             return None
-    
-    def _load_pdf_first_page(self, pdf_path: Path) -> Optional[np.ndarray]:
+
+    def _load_pdf_first_page(self, pdf_path: Path) -> np.ndarray | None:
         """Load first page of PDF as image.
         
         Args:
@@ -353,7 +354,7 @@ class ImagePreprocessor:
         try:
             # Try using pdf2image if available
             from pdf2image import convert_from_path
-            
+
             pages = convert_from_path(str(pdf_path), first_page=1, last_page=1)
             if pages:
                 return np.array(pages[0].convert("RGB"))
@@ -362,9 +363,9 @@ class ImagePreprocessor:
             pass
         except Exception:
             pass
-        
+
         return None
-    
+
     def _to_grayscale(self, image: np.ndarray) -> np.ndarray:
         """Convert image to grayscale.
         
@@ -376,12 +377,12 @@ class ImagePreprocessor:
         """
         if len(image.shape) == 2:
             return image
-        
+
         # Check if BGR (OpenCV) or RGB (PIL)
         # Assume BGR for OpenCV loaded images
         return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
-    def _deskew(self, image: np.ndarray) -> Tuple[np.ndarray, float]:
+
+    def _deskew(self, image: np.ndarray) -> tuple[np.ndarray, float]:
         """Correct image rotation (deskew).
         
         Uses Hough line transform to detect dominant line angle
@@ -395,7 +396,7 @@ class ImagePreprocessor:
         """
         # Detect edges
         edges = cv2.Canny(image, 50, 150, apertureSize=3)
-        
+
         # Detect lines using Hough transform
         lines = cv2.HoughLinesP(
             edges,
@@ -405,10 +406,10 @@ class ImagePreprocessor:
             minLineLength=100,
             maxLineGap=10,
         )
-        
+
         if lines is None or len(lines) == 0:
             return image, 0.0
-        
+
         # Calculate angles of detected lines
         angles = []
         for line in lines:
@@ -418,32 +419,32 @@ class ImagePreprocessor:
                 # Only consider near-horizontal lines (within ±45°)
                 if -45 <= angle <= 45:
                     angles.append(angle)
-        
+
         if not angles:
             return image, 0.0
-        
+
         # Use median angle to avoid outliers
         median_angle = np.median(angles)
-        
+
         # Only deskew if angle is significant but not too large
         if abs(median_angle) < 0.5 or abs(median_angle) > 15:
             return image, 0.0
-        
+
         # Rotate image to correct skew
         height, width = image.shape[:2]
         center = (width // 2, height // 2)
         rotation_matrix = cv2.getRotationMatrix2D(center, median_angle, 1.0)
-        
+
         # Calculate new image bounds
         cos_angle = abs(rotation_matrix[0, 0])
         sin_angle = abs(rotation_matrix[0, 1])
         new_width = int(height * sin_angle + width * cos_angle)
         new_height = int(height * cos_angle + width * sin_angle)
-        
+
         # Adjust rotation matrix for new bounds
         rotation_matrix[0, 2] += (new_width - width) / 2
         rotation_matrix[1, 2] += (new_height - height) / 2
-        
+
         deskewed = cv2.warpAffine(
             image,
             rotation_matrix,
@@ -451,9 +452,9 @@ class ImagePreprocessor:
             flags=cv2.INTER_LINEAR,
             borderMode=cv2.BORDER_REPLICATE,
         )
-        
+
         return deskewed, median_angle
-    
+
     def _remove_noise(self, image: np.ndarray) -> np.ndarray:
         """Remove noise from image.
         
@@ -473,9 +474,9 @@ class ImagePreprocessor:
             templateWindowSize=7,
             searchWindowSize=21,
         )
-        
+
         return denoised
-    
+
     def _enhance_contrast(self, image: np.ndarray) -> np.ndarray:
         """Enhance image contrast using CLAHE.
         
@@ -493,9 +494,9 @@ class ImagePreprocessor:
             tileGridSize=self.clahe_tile_size,
         )
         enhanced = clahe.apply(image)
-        
+
         return enhanced
-    
+
     def _binarize(self, image: np.ndarray) -> np.ndarray:
         """Binarize image using Otsu's method.
         
@@ -514,7 +515,7 @@ class ImagePreprocessor:
             (self.gaussian_kernel_size, self.gaussian_kernel_size),
             0,
         )
-        
+
         # Apply Otsu's thresholding
         _, binary = cv2.threshold(
             blurred,
@@ -522,9 +523,9 @@ class ImagePreprocessor:
             255,
             cv2.THRESH_BINARY + cv2.THRESH_OTSU,
         )
-        
+
         return binary
-    
+
     def _calculate_sharpness(self, image: np.ndarray) -> float:
         """Calculate image sharpness using Laplacian variance.
         
@@ -539,7 +540,7 @@ class ImagePreprocessor:
         laplacian = cv2.Laplacian(image, cv2.CV_64F)
         variance = laplacian.var()
         return float(variance)
-    
+
     def _calculate_contrast(self, image: np.ndarray) -> float:
         """Calculate image contrast ratio.
         
@@ -553,14 +554,14 @@ class ImagePreprocessor:
         """
         mean_intensity = np.mean(image)
         std_intensity = np.std(image)
-        
+
         if mean_intensity == 0:
             return 0.0
-        
+
         # Normalize to 0-1 range (assuming max useful std ~80)
         contrast = min(std_intensity / 80.0, 1.0)
         return float(contrast)
-    
+
     def _estimate_noise(self, image: np.ndarray) -> float:
         """Estimate noise level in image.
         
@@ -574,14 +575,14 @@ class ImagePreprocessor:
         """
         # Apply Laplacian to get high-frequency components
         laplacian = cv2.Laplacian(image, cv2.CV_64F)
-        
+
         # Estimate noise as median absolute deviation
         sigma = np.median(np.abs(laplacian)) / 0.6745
-        
+
         # Normalize to 0-1 range (assuming max noise sigma ~50)
         noise_level = min(sigma / 50.0, 1.0)
         return float(noise_level)
-    
+
     def _estimate_text_density(self, image: np.ndarray) -> float:
         """Estimate text density in image.
         
@@ -596,18 +597,18 @@ class ImagePreprocessor:
         """
         # Detect edges
         edges = cv2.Canny(image, 50, 150)
-        
+
         # Calculate ratio of edge pixels to total pixels
         edge_ratio = np.sum(edges > 0) / edges.size
-        
+
         # Normalize (typical text documents have 5-20% edge pixels)
         text_density = min(edge_ratio / 0.15, 1.0)
         return float(text_density)
-    
+
     def save_processed_image(
         self,
         processed: ProcessedImage,
-        output_path: Union[str, Path],
+        output_path: str | Path,
         format: str = "png",
     ) -> Path:
         """Save preprocessed image to file.
@@ -622,7 +623,7 @@ class ImagePreprocessor:
         """
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         if format.lower() == "jpeg":
             cv2.imwrite(
                 str(output_path),
@@ -631,5 +632,5 @@ class ImagePreprocessor:
             )
         else:
             cv2.imwrite(str(output_path), processed.image)
-        
+
         return output_path

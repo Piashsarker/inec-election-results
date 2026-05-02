@@ -6,12 +6,13 @@ assessment. It implements intelligent engine selection and fallback logic.
 
 Requirements: 3.1
 """
+from __future__ import annotations
+
 
 import logging
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
 
@@ -19,13 +20,12 @@ from app.core.ocr.preprocessing import ImagePreprocessor, ProcessedImage, Qualit
 from app.core.ocr.tesseract import OCRResult, TesseractEngine
 from app.core.ocr.vision import ExtractionResult, GPT4VisionEngine
 
-
 logger = logging.getLogger(__name__)
 
 
 class OCREngine(str, Enum):
     """Available OCR engines."""
-    
+
     TESSERACT = "tesseract"
     GPT4_VISION = "gpt4_vision"
     AUTO = "auto"
@@ -44,15 +44,15 @@ class OCROrchestrationResult:
         fallback_used: Whether fallback engine was used
         raw_ocr_result: Raw OCR result from Tesseract (if used)
     """
-    
+
     text: str
-    extraction: Optional[ExtractionResult]
+    extraction: ExtractionResult | None
     engine_used: OCREngine
     quality_score: QualityScore
     preprocessing_applied: list[str]
     fallback_used: bool = False
-    raw_ocr_result: Optional[OCRResult] = None
-    
+    raw_ocr_result: OCRResult | None = None
+
     @property
     def confidence(self) -> float:
         """Get overall confidence score."""
@@ -61,7 +61,7 @@ class OCROrchestrationResult:
         if self.raw_ocr_result:
             return self.raw_ocr_result.normalized_confidence
         return 0.0
-    
+
     @property
     def is_successful(self) -> bool:
         """Check if extraction was successful."""
@@ -84,13 +84,13 @@ class OCROrchestrator:
     
     Requirements: 3.1
     """
-    
+
     def __init__(
         self,
         quality_threshold: float = 0.7,
         tesseract_lang: str = "eng",
         tesseract_config: str = "--psm 6",
-        openai_api_key: Optional[str] = None,
+        openai_api_key: str | None = None,
         openai_model: str = "gpt-4o",
         enable_fallback: bool = True,
         preprocess_images: bool = True,
@@ -109,20 +109,20 @@ class OCROrchestrator:
         self.quality_threshold = quality_threshold
         self.enable_fallback = enable_fallback
         self.preprocess_images = preprocess_images
-        
+
         # Initialize preprocessor
         self.preprocessor = ImagePreprocessor(quality_threshold=quality_threshold)
-        
+
         # Initialize engines (lazy loading)
-        self._tesseract: Optional[TesseractEngine] = None
-        self._gpt4_vision: Optional[GPT4VisionEngine] = None
-        
+        self._tesseract: TesseractEngine | None = None
+        self._gpt4_vision: GPT4VisionEngine | None = None
+
         # Engine configuration
         self._tesseract_lang = tesseract_lang
         self._tesseract_config = tesseract_config
         self._openai_api_key = openai_api_key
         self._openai_model = openai_model
-    
+
     @property
     def tesseract(self) -> TesseractEngine:
         """Get or create Tesseract engine instance."""
@@ -132,7 +132,7 @@ class OCROrchestrator:
                 config=self._tesseract_config,
             )
         return self._tesseract
-    
+
     @property
     def gpt4_vision(self) -> GPT4VisionEngine:
         """Get or create GPT-4 Vision engine instance."""
@@ -142,10 +142,10 @@ class OCROrchestrator:
                 model=self._openai_model,
             )
         return self._gpt4_vision
-    
+
     def process(
         self,
-        image_path: Union[str, Path],
+        image_path: str | Path,
         engine: OCREngine = OCREngine.AUTO,
         extract_structured: bool = True,
     ) -> OCROrchestrationResult:
@@ -160,7 +160,7 @@ class OCROrchestrator:
             OCROrchestrationResult with extracted data
         """
         image_path = Path(image_path)
-        
+
         # Preprocess image
         if self.preprocess_images:
             processed = self.preprocessor.preprocess(image_path)
@@ -176,21 +176,21 @@ class OCROrchestrator:
                 preprocessing_applied=[],
                 deskew_angle=0.0,
             )
-        
+
         # Determine which engine to use
         if engine == OCREngine.AUTO:
             engine = self._select_engine(processed.quality_score)
-        
+
         logger.info(
             f"Processing {image_path.name} with {engine.value} "
             f"(quality: {processed.quality_score.overall_score:.2f})"
         )
-        
+
         # Process with selected engine
         result = self._process_with_engine(
             processed, image_path, engine, extract_structured
         )
-        
+
         # Fallback if primary engine fails
         if (
             self.enable_fallback and
@@ -199,20 +199,20 @@ class OCROrchestrator:
         ):
             fallback_engine = self._get_fallback_engine(engine)
             logger.info(f"Falling back to {fallback_engine.value}")
-            
+
             fallback_result = self._process_with_engine(
                 processed, image_path, fallback_engine, extract_structured
             )
-            
+
             if fallback_result.is_successful:
                 fallback_result.fallback_used = True
                 return fallback_result
-        
+
         return result
-    
+
     async def process_async(
         self,
-        image_path: Union[str, Path],
+        image_path: str | Path,
         engine: OCREngine = OCREngine.AUTO,
         extract_structured: bool = True,
     ) -> OCROrchestrationResult:
@@ -227,7 +227,7 @@ class OCROrchestrator:
             OCROrchestrationResult with extracted data
         """
         image_path = Path(image_path)
-        
+
         # Preprocess image
         if self.preprocess_images:
             processed = self.preprocessor.preprocess(image_path)
@@ -242,21 +242,21 @@ class OCROrchestrator:
                 preprocessing_applied=[],
                 deskew_angle=0.0,
             )
-        
+
         # Determine which engine to use
         if engine == OCREngine.AUTO:
             engine = self._select_engine(processed.quality_score)
-        
+
         logger.info(
             f"Processing {image_path.name} with {engine.value} "
             f"(quality: {processed.quality_score.overall_score:.2f})"
         )
-        
+
         # Process with selected engine
         result = await self._process_with_engine_async(
             processed, image_path, engine, extract_structured
         )
-        
+
         # Fallback if primary engine fails
         if (
             self.enable_fallback and
@@ -265,17 +265,17 @@ class OCROrchestrator:
         ):
             fallback_engine = self._get_fallback_engine(engine)
             logger.info(f"Falling back to {fallback_engine.value}")
-            
+
             fallback_result = await self._process_with_engine_async(
                 processed, image_path, fallback_engine, extract_structured
             )
-            
+
             if fallback_result.is_successful:
                 fallback_result.fallback_used = True
                 return fallback_result
-        
+
         return result
-    
+
     def process_array(
         self,
         image: np.ndarray,
@@ -304,16 +304,16 @@ class OCROrchestrator:
                 preprocessing_applied=[],
                 deskew_angle=0.0,
             )
-        
+
         # Determine which engine to use
         if engine == OCREngine.AUTO:
             engine = self._select_engine(processed.quality_score)
-        
+
         # Process with selected engine
         return self._process_array_with_engine(
             processed, engine, extract_structured
         )
-    
+
     def _select_engine(self, quality_score: QualityScore) -> OCREngine:
         """Select OCR engine based on image quality.
         
@@ -326,7 +326,7 @@ class OCROrchestrator:
         if quality_score.overall_score >= self.quality_threshold:
             return OCREngine.TESSERACT
         return OCREngine.GPT4_VISION
-    
+
     def _get_fallback_engine(self, primary: OCREngine) -> OCREngine:
         """Get fallback engine for the given primary engine.
         
@@ -339,7 +339,7 @@ class OCROrchestrator:
         if primary == OCREngine.TESSERACT:
             return OCREngine.GPT4_VISION
         return OCREngine.TESSERACT
-    
+
     def _process_with_engine(
         self,
         processed: ProcessedImage,
@@ -361,13 +361,13 @@ class OCROrchestrator:
         text = ""
         extraction = None
         raw_ocr_result = None
-        
+
         try:
             if engine == OCREngine.TESSERACT:
                 # Use Tesseract for text extraction
                 raw_ocr_result = self.tesseract.extract_text(processed.image)
                 text = raw_ocr_result.text
-                
+
             elif engine == OCREngine.GPT4_VISION:
                 # Use GPT-4 Vision for structured extraction
                 if extract_structured:
@@ -377,10 +377,10 @@ class OCROrchestrator:
                     # Just get text without structured extraction
                     extraction = self.gpt4_vision.extract(image_path)
                     text = extraction.raw_response
-                    
+
         except Exception as e:
             logger.error(f"OCR processing failed with {engine.value}: {e}")
-        
+
         return OCROrchestrationResult(
             text=text,
             extraction=extraction,
@@ -389,7 +389,7 @@ class OCROrchestrator:
             preprocessing_applied=processed.preprocessing_applied,
             raw_ocr_result=raw_ocr_result,
         )
-    
+
     async def _process_with_engine_async(
         self,
         processed: ProcessedImage,
@@ -411,7 +411,7 @@ class OCROrchestrator:
         text = ""
         extraction = None
         raw_ocr_result = None
-        
+
         try:
             if engine == OCREngine.TESSERACT:
                 # Tesseract is synchronous, run in thread pool
@@ -421,7 +421,7 @@ class OCROrchestrator:
                     None, self.tesseract.extract_text, processed.image
                 )
                 text = raw_ocr_result.text
-                
+
             elif engine == OCREngine.GPT4_VISION:
                 # Use async GPT-4 Vision
                 if extract_structured:
@@ -430,10 +430,10 @@ class OCROrchestrator:
                 else:
                     extraction = await self.gpt4_vision.extract_async(image_path)
                     text = extraction.raw_response
-                    
+
         except Exception as e:
             logger.error(f"OCR processing failed with {engine.value}: {e}")
-        
+
         return OCROrchestrationResult(
             text=text,
             extraction=extraction,
@@ -442,7 +442,7 @@ class OCROrchestrator:
             preprocessing_applied=processed.preprocessing_applied,
             raw_ocr_result=raw_ocr_result,
         )
-    
+
     def _process_array_with_engine(
         self,
         processed: ProcessedImage,
@@ -462,12 +462,12 @@ class OCROrchestrator:
         text = ""
         extraction = None
         raw_ocr_result = None
-        
+
         try:
             if engine == OCREngine.TESSERACT:
                 raw_ocr_result = self.tesseract.extract_text(processed.image)
                 text = raw_ocr_result.text
-                
+
             elif engine == OCREngine.GPT4_VISION:
                 if extract_structured:
                     extraction = self.gpt4_vision.extract_from_array(processed.image)
@@ -475,10 +475,10 @@ class OCROrchestrator:
                 else:
                     extraction = self.gpt4_vision.extract_from_array(processed.image)
                     text = extraction.raw_response
-                    
+
         except Exception as e:
             logger.error(f"OCR processing failed with {engine.value}: {e}")
-        
+
         return OCROrchestrationResult(
             text=text,
             extraction=extraction,
@@ -487,7 +487,7 @@ class OCROrchestrator:
             preprocessing_applied=processed.preprocessing_applied,
             raw_ocr_result=raw_ocr_result,
         )
-    
+
     def get_engine_status(self) -> dict:
         """Get status of available OCR engines.
         
@@ -503,18 +503,18 @@ class OCROrchestrator:
                 "available": False,
             },
         }
-        
+
         try:
             if self.tesseract.is_available():
                 status["tesseract"]["available"] = True
                 status["tesseract"]["languages"] = self.tesseract.get_supported_languages()
         except Exception:
             pass
-        
+
         try:
             if self.gpt4_vision.is_available():
                 status["gpt4_vision"]["available"] = True
         except Exception:
             pass
-        
+
         return status

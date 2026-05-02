@@ -4,11 +4,12 @@ Provides endpoints for exporting election results in CSV and JSON formats.
 
 Requirements: 8.1, 8.2, 8.3, 8.4
 """
+from __future__ import annotations
+
 
 import os
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -25,16 +26,16 @@ settings = get_settings()
 
 class ExportRequest(BaseModel):
     """Request schema for export generation."""
-    election_type_id: Optional[str] = None
-    state_id: Optional[str] = None
-    lga_id: Optional[str] = None
-    ward_id: Optional[str] = None
+    election_type_id: str | None = None
+    state_id: str | None = None
+    lga_id: str | None = None
+    ward_id: str | None = None
     include_metadata: bool = True
 
 
 class JSONExportRequest(ExportRequest):
     """Request schema for JSON export generation."""
-    aggregation_level: Optional[str] = None  # 'ward', 'lga', 'state', or None for detailed
+    aggregation_level: str | None = None  # 'ward', 'lga', 'state', or None for detailed
 
 
 class ExportResponse(BaseModel):
@@ -51,11 +52,11 @@ class ExportStatusResponse(BaseModel):
     export_id: str
     format: str
     status: str
-    file_path: Optional[str] = None
-    record_count: Optional[int] = None
-    generated_at: Optional[str] = None
-    filters: Optional[dict] = None
-    error: Optional[str] = None
+    file_path: str | None = None
+    record_count: int | None = None
+    generated_at: str | None = None
+    filters: dict | None = None
+    error: str | None = None
 
 
 @router.post("/csv", response_model=ExportResponse)
@@ -77,7 +78,7 @@ async def create_csv_export(
     Requirements: 8.1, 8.3
     """
     export_id = str(uuid.uuid4())
-    
+
     # Queue the Celery task
     task = generate_csv_export.delay(
         export_id=export_id,
@@ -87,7 +88,7 @@ async def create_csv_export(
         ward_id=request.ward_id,
         include_metadata=request.include_metadata,
     )
-    
+
     return ExportResponse(
         export_id=export_id,
         format="csv",
@@ -122,14 +123,14 @@ async def create_json_export(
     Requirements: 8.2, 8.3, 8.4
     """
     export_id = str(uuid.uuid4())
-    
+
     # Validate aggregation level if provided
     if request.aggregation_level and request.aggregation_level not in ("ward", "lga", "state"):
         raise HTTPException(
             status_code=400,
             detail="Invalid aggregation_level. Must be 'ward', 'lga', 'state', or null"
         )
-    
+
     # Queue the Celery task
     task = generate_json_export.delay(
         export_id=export_id,
@@ -140,7 +141,7 @@ async def create_json_export(
         include_metadata=request.include_metadata,
         aggregation_level=request.aggregation_level,
     )
-    
+
     return ExportResponse(
         export_id=export_id,
         format="json",
@@ -171,7 +172,7 @@ async def get_export_status(
     Requirements: 8.1, 8.2
     """
     export_dir = os.path.join(settings.scraping.storage_path, "exports")
-    
+
     # Check for CSV file
     csv_path = os.path.join(export_dir, f"{export_id}.csv")
     if os.path.exists(csv_path):
@@ -183,7 +184,7 @@ async def get_export_status(
             file_path=csv_path,
             generated_at=datetime.fromtimestamp(stat.st_mtime).isoformat(),
         )
-    
+
     # Check for JSON file
     json_path = os.path.join(export_dir, f"{export_id}.json")
     if os.path.exists(json_path):
@@ -195,7 +196,7 @@ async def get_export_status(
             file_path=json_path,
             generated_at=datetime.fromtimestamp(stat.st_mtime).isoformat(),
         )
-    
+
     # File not found - could be still processing or failed
     return ExportStatusResponse(
         export_id=export_id,
@@ -207,7 +208,7 @@ async def get_export_status(
 @router.get("/{export_id}/download")
 async def download_export(
     export_id: str,
-    format: Optional[str] = Query(None, description="File format (csv or json)"),
+    format: str | None = Query(None, description="File format (csv or json)"),
 ) -> FileResponse:
     """Download a generated export file.
     
@@ -221,7 +222,7 @@ async def download_export(
     Requirements: 8.1, 8.2, 8.4
     """
     export_dir = os.path.join(settings.scraping.storage_path, "exports")
-    
+
     # Determine file path based on format hint or check both
     if format == "csv":
         file_path = os.path.join(export_dir, f"{export_id}.csv")
@@ -235,7 +236,7 @@ async def download_export(
         # Try CSV first, then JSON
         csv_path = os.path.join(export_dir, f"{export_id}.csv")
         json_path = os.path.join(export_dir, f"{export_id}.json")
-        
+
         if os.path.exists(csv_path):
             file_path = csv_path
             media_type = "text/csv"
@@ -249,13 +250,13 @@ async def download_export(
                 status_code=404,
                 detail="Export file not found. It may still be processing or the export ID is invalid."
             )
-    
+
     if not os.path.exists(file_path):
         raise HTTPException(
             status_code=404,
             detail="Export file not found. It may still be processing or the export ID is invalid."
         )
-    
+
     return FileResponse(
         path=file_path,
         media_type=media_type,

@@ -6,13 +6,15 @@ images where traditional OCR may struggle.
 
 Requirements: 3.1, 3.2
 """
+from __future__ import annotations
+
 
 import base64
 import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import numpy as np
 
@@ -36,7 +38,7 @@ class PartyVoteResult:
         votes: Number of votes received
         confidence: Confidence in this extraction (0-1)
     """
-    
+
     name: str
     code: str
     votes: int
@@ -56,20 +58,20 @@ class ExtractionResult:
         raw_response: Raw API response text
         metadata: Additional extracted metadata
     """
-    
-    parties: List[PartyVoteResult] = field(default_factory=list)
+
+    parties: list[PartyVoteResult] = field(default_factory=list)
     accredited_voters: int = 0
     valid_votes: int = 0
     rejected_votes: int = 0
     confidence: float = 0.0
     raw_response: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
+    metadata: dict[str, Any] = field(default_factory=dict)
+
     @property
     def total_party_votes(self) -> int:
         """Calculate sum of all party votes."""
         return sum(p.votes for p in self.parties)
-    
+
     @property
     def is_valid(self) -> bool:
         """Check if extraction appears valid."""
@@ -78,8 +80,8 @@ class ExtractionResult:
             self.valid_votes > 0 and
             self.confidence >= 0.5
         )
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             "parties": [
@@ -111,7 +113,7 @@ class GPT4VisionEngine:
     
     Requirements: 3.1, 3.2
     """
-    
+
     # Extraction prompt for Nigerian election result sheets
     EXTRACTION_PROMPT = """Analyze this Nigerian election result sheet image and extract the following information:
 
@@ -166,7 +168,7 @@ Include a "verification_notes" field with any observations."""
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         model: str = "gpt-4o",
         max_tokens: int = 1000,
         temperature: float = 0.0,
@@ -187,18 +189,18 @@ Include a "verification_notes" field with any observations."""
                 "openai library is not installed. "
                 "Install with: pip install openai"
             )
-        
+
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
-        
+
         # Initialize clients
         self.client = OpenAI(api_key=api_key) if api_key else OpenAI()
         self.async_client = AsyncOpenAI(api_key=api_key) if api_key else AsyncOpenAI()
-    
+
     def extract(
         self,
-        image_path: Union[str, Path],
+        image_path: str | Path,
         verify: bool = False,
     ) -> ExtractionResult:
         """Extract election data from image using GPT-4 Vision.
@@ -213,25 +215,25 @@ Include a "verification_notes" field with any observations."""
         image_path = Path(image_path)
         if not image_path.exists():
             raise FileNotFoundError(f"Image not found: {image_path}")
-        
+
         # Encode image to base64
         base64_image = self._encode_image(image_path)
-        
+
         # Make API request
         response = self._call_vision_api(base64_image, self.EXTRACTION_PROMPT)
-        
+
         # Parse response
         result = self._parse_response(response)
-        
+
         # Optional verification pass
         if verify and result.confidence > 0.3:
             result = self._verify_extraction(base64_image, result)
-        
+
         return result
-    
+
     async def extract_async(
         self,
-        image_path: Union[str, Path],
+        image_path: str | Path,
         verify: bool = False,
     ) -> ExtractionResult:
         """Extract election data asynchronously.
@@ -246,24 +248,24 @@ Include a "verification_notes" field with any observations."""
         image_path = Path(image_path)
         if not image_path.exists():
             raise FileNotFoundError(f"Image not found: {image_path}")
-        
+
         # Encode image to base64
         base64_image = self._encode_image(image_path)
-        
+
         # Make async API request
         response = await self._call_vision_api_async(
             base64_image, self.EXTRACTION_PROMPT
         )
-        
+
         # Parse response
         result = self._parse_response(response)
-        
+
         # Optional verification pass
         if verify and result.confidence > 0.3:
             result = await self._verify_extraction_async(base64_image, result)
-        
+
         return result
-    
+
     def extract_from_array(
         self,
         image: np.ndarray,
@@ -280,19 +282,19 @@ Include a "verification_notes" field with any observations."""
         """
         # Encode numpy array to base64
         base64_image = self._encode_array(image)
-        
+
         # Make API request
         response = self._call_vision_api(base64_image, self.EXTRACTION_PROMPT)
-        
+
         # Parse response
         result = self._parse_response(response)
-        
+
         # Optional verification pass
         if verify and result.confidence > 0.3:
             result = self._verify_extraction(base64_image, result)
-        
+
         return result
-    
+
     def _encode_image(self, image_path: Path) -> str:
         """Encode image file to base64 string.
         
@@ -304,7 +306,7 @@ Include a "verification_notes" field with any observations."""
         """
         with open(image_path, "rb") as f:
             return base64.standard_b64encode(f.read()).decode("utf-8")
-    
+
     def _encode_array(self, image: np.ndarray) -> str:
         """Encode numpy array image to base64 string.
         
@@ -315,11 +317,11 @@ Include a "verification_notes" field with any observations."""
             Base64 encoded image string
         """
         import cv2
-        
+
         # Encode as JPEG
         _, buffer = cv2.imencode(".jpg", image)
         return base64.standard_b64encode(buffer).decode("utf-8")
-    
+
     def _get_image_media_type(self, image_path: Path) -> str:
         """Get media type for image file.
         
@@ -338,7 +340,7 @@ Include a "verification_notes" field with any observations."""
             ".webp": "image/webp",
         }
         return media_types.get(suffix, "image/jpeg")
-    
+
     def _call_vision_api(self, base64_image: str, prompt: str) -> str:
         """Call GPT-4 Vision API synchronously.
         
@@ -370,13 +372,13 @@ Include a "verification_notes" field with any observations."""
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
             )
-            
+
             return response.choices[0].message.content or ""
-            
+
         except Exception as e:
             logger.error(f"GPT-4 Vision API error: {e}")
             raise
-    
+
     async def _call_vision_api_async(
         self, base64_image: str, prompt: str
     ) -> str:
@@ -410,13 +412,13 @@ Include a "verification_notes" field with any observations."""
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
             )
-            
+
             return response.choices[0].message.content or ""
-            
+
         except Exception as e:
             logger.error(f"GPT-4 Vision API error: {e}")
             raise
-    
+
     def _parse_response(self, response: str) -> ExtractionResult:
         """Parse GPT-4 Vision API response into ExtractionResult.
         
@@ -427,7 +429,7 @@ Include a "verification_notes" field with any observations."""
             ExtractionResult with parsed data
         """
         result = ExtractionResult(raw_response=response)
-        
+
         try:
             # Extract JSON from response (handle markdown code blocks)
             json_str = response.strip()
@@ -443,9 +445,9 @@ Include a "verification_notes" field with any observations."""
                     if in_block:
                         json_lines.append(line)
                 json_str = "\n".join(json_lines)
-            
+
             data = json.loads(json_str)
-            
+
             # Parse parties
             for party_data in data.get("parties", []):
                 party = PartyVoteResult(
@@ -455,13 +457,13 @@ Include a "verification_notes" field with any observations."""
                     confidence=float(party_data.get("confidence", 1.0)),
                 )
                 result.parties.append(party)
-            
+
             # Parse totals
             result.accredited_voters = int(data.get("accredited_voters", 0))
             result.valid_votes = int(data.get("valid_votes", 0))
             result.rejected_votes = int(data.get("rejected_votes", 0))
             result.confidence = float(data.get("confidence", 0.0))
-            
+
             # Store any additional metadata
             for key in data:
                 if key not in {
@@ -469,16 +471,16 @@ Include a "verification_notes" field with any observations."""
                     "rejected_votes", "confidence"
                 }:
                     result.metadata[key] = data[key]
-            
+
         except json.JSONDecodeError as e:
             logger.warning(f"Failed to parse JSON response: {e}")
             result.confidence = 0.0
         except Exception as e:
             logger.error(f"Error parsing response: {e}")
             result.confidence = 0.0
-        
+
         return result
-    
+
     def _verify_extraction(
         self,
         base64_image: str,
@@ -496,20 +498,20 @@ Include a "verification_notes" field with any observations."""
         prompt = self.VERIFICATION_PROMPT.format(
             extracted_data=json.dumps(result.to_dict(), indent=2)
         )
-        
+
         try:
             response = self._call_vision_api(base64_image, prompt)
             verified = self._parse_response(response)
-            
+
             # Use verified result if it has higher confidence
             if verified.confidence >= result.confidence:
                 return verified
-            
+
         except Exception as e:
             logger.warning(f"Verification failed: {e}")
-        
+
         return result
-    
+
     async def _verify_extraction_async(
         self,
         base64_image: str,
@@ -527,20 +529,20 @@ Include a "verification_notes" field with any observations."""
         prompt = self.VERIFICATION_PROMPT.format(
             extracted_data=json.dumps(result.to_dict(), indent=2)
         )
-        
+
         try:
             response = await self._call_vision_api_async(base64_image, prompt)
             verified = self._parse_response(response)
-            
+
             # Use verified result if it has higher confidence
             if verified.confidence >= result.confidence:
                 return verified
-            
+
         except Exception as e:
             logger.warning(f"Verification failed: {e}")
-        
+
         return result
-    
+
     def is_available(self) -> bool:
         """Check if GPT-4 Vision API is available.
         

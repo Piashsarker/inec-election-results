@@ -8,14 +8,17 @@ This module provides:
 
 Requirements: 7.2, 7.3, 7.5
 """
+from __future__ import annotations
+
 
 import asyncio
 import uuid
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, TypeVar
 
 from app.core.logging import get_logger
 
@@ -29,7 +32,7 @@ class ErrorCategory(str, Enum):
     
     Requirement 7.2: Categorize errors as network, parsing, or validation errors.
     """
-    
+
     NETWORK = "network"
     PARSING = "parsing"
     VALIDATION = "validation"
@@ -42,7 +45,7 @@ class ErrorCategory(str, Enum):
 
 class ErrorSeverity(str, Enum):
     """Error severity levels for prioritization."""
-    
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -53,17 +56,17 @@ class ErrorSeverity(str, Enum):
 
 class INECAgentError(Exception):
     """Base exception for all INEC Agent errors."""
-    
+
     category: ErrorCategory = ErrorCategory.UNKNOWN
     severity: ErrorSeverity = ErrorSeverity.MEDIUM
     retryable: bool = False
-    
+
     def __init__(
         self,
         message: str,
         *,
-        context: Optional[dict[str, Any]] = None,
-        cause: Optional[Exception] = None,
+        context: dict[str, Any] | None = None,
+        cause: Exception | None = None,
     ):
         """Initialize error with message and context.
         
@@ -77,7 +80,7 @@ class INECAgentError(Exception):
         self.context = context or {}
         self.cause = cause
         self.timestamp = datetime.now(timezone.utc)
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert error to dictionary for logging/serialization."""
         return {
@@ -99,7 +102,7 @@ class NetworkError(INECAgentError):
     
     These errors are typically retryable with exponential backoff.
     """
-    
+
     category = ErrorCategory.NETWORK
     severity = ErrorSeverity.MEDIUM
     retryable = True
@@ -117,20 +120,20 @@ class TimeoutError(NetworkError):
 
 class HTTPError(NetworkError):
     """HTTP error response received."""
-    
+
     def __init__(
         self,
         message: str,
         *,
         status_code: int,
-        context: Optional[dict[str, Any]] = None,
-        cause: Optional[Exception] = None,
+        context: dict[str, Any] | None = None,
+        cause: Exception | None = None,
     ):
         context = context or {}
         context["status_code"] = status_code
         super().__init__(message, context=context, cause=cause)
         self.status_code = status_code
-        
+
         # 5xx errors are retryable, 4xx are not
         self.retryable = 500 <= status_code < 600
 
@@ -139,7 +142,7 @@ class HTTPError(NetworkError):
 
 class PortalError(INECAgentError):
     """INEC portal navigation errors."""
-    
+
     category = ErrorCategory.PORTAL
     severity = ErrorSeverity.MEDIUM
     retryable = False
@@ -159,7 +162,7 @@ class NavigationError(PortalError):
 
 class DownloadError(INECAgentError):
     """Result sheet download errors."""
-    
+
     category = ErrorCategory.DOWNLOAD
     severity = ErrorSeverity.MEDIUM
     retryable = True
@@ -179,7 +182,7 @@ class CorruptDownloadError(DownloadError):
 
 class OCRError(INECAgentError):
     """OCR processing errors."""
-    
+
     category = ErrorCategory.OCR
     severity = ErrorSeverity.MEDIUM
     retryable = False
@@ -199,7 +202,7 @@ class LowConfidenceError(OCRError):
 
 class ParsingError(INECAgentError):
     """Data parsing errors."""
-    
+
     category = ErrorCategory.PARSING
     severity = ErrorSeverity.MEDIUM
     retryable = False
@@ -212,14 +215,14 @@ class UnrecognizedFormatError(ParsingError):
 
 class MissingFieldError(ParsingError):
     """Required field missing from extracted data."""
-    
+
     def __init__(
         self,
         message: str,
         *,
         field_name: str,
-        context: Optional[dict[str, Any]] = None,
-        cause: Optional[Exception] = None,
+        context: dict[str, Any] | None = None,
+        cause: Exception | None = None,
     ):
         context = context or {}
         context["missing_field"] = field_name
@@ -231,7 +234,7 @@ class MissingFieldError(ParsingError):
 
 class ValidationError(INECAgentError):
     """Data validation errors."""
-    
+
     category = ErrorCategory.VALIDATION
     severity = ErrorSeverity.LOW
     retryable = False
@@ -239,15 +242,15 @@ class ValidationError(INECAgentError):
 
 class VoteSumMismatchError(ValidationError):
     """Sum of party votes doesn't match total valid votes."""
-    
+
     def __init__(
         self,
         message: str,
         *,
         party_sum: int,
         valid_votes: int,
-        context: Optional[dict[str, Any]] = None,
-        cause: Optional[Exception] = None,
+        context: dict[str, Any] | None = None,
+        cause: Exception | None = None,
     ):
         context = context or {}
         context["party_sum"] = party_sum
@@ -270,7 +273,7 @@ class ExceedsAccreditedError(ValidationError):
 
 class DatabaseError(INECAgentError):
     """Database operation errors."""
-    
+
     category = ErrorCategory.DATABASE
     severity = ErrorSeverity.HIGH
     retryable = True
@@ -290,17 +293,17 @@ class ConstraintViolationError(DatabaseError):
 
 class MaxRetriesExceededError(INECAgentError):
     """Maximum retry attempts exceeded."""
-    
+
     severity = ErrorSeverity.HIGH
     retryable = False
-    
+
     def __init__(
         self,
         message: str,
         *,
         max_retries: int,
-        last_error: Optional[Exception] = None,
-        context: Optional[dict[str, Any]] = None,
+        last_error: Exception | None = None,
+        context: dict[str, Any] | None = None,
     ):
         context = context or {}
         context["max_retries"] = max_retries
@@ -317,7 +320,7 @@ class FailedItem:
     
     Requirement 7.5: Store failed items in a separate queue for manual review or retry.
     """
-    
+
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     item_type: str = ""  # e.g., "polling_unit", "result_sheet", "extraction"
     item_id: str = ""  # Identifier of the failed item
@@ -325,19 +328,19 @@ class FailedItem:
     retry_count: int = 0
     max_retries: int = 3
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    last_retry_at: Optional[datetime] = None
+    last_retry_at: datetime | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
-    
+
     @property
     def can_retry(self) -> bool:
         """Check if item can be retried."""
         return self.error.retryable and self.retry_count < self.max_retries
-    
+
     @property
     def error_category(self) -> ErrorCategory:
         """Get error category."""
         return self.error.category
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
@@ -363,7 +366,7 @@ class FailedItemsQueue:
     
     Requirement 7.5: Store failed items in a separate queue for manual review or retry.
     """
-    
+
     def __init__(self, max_size: int = 10000):
         """Initialize failed items queue.
         
@@ -375,7 +378,7 @@ class FailedItemsQueue:
         self._by_category: dict[ErrorCategory, list[FailedItem]] = {
             cat: [] for cat in ErrorCategory
         }
-    
+
     async def add(
         self,
         item_type: str,
@@ -383,7 +386,7 @@ class FailedItemsQueue:
         error: INECAgentError,
         *,
         max_retries: int = 3,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> FailedItem:
         """Add a failed item to the queue.
         
@@ -404,11 +407,11 @@ class FailedItemsQueue:
             max_retries=max_retries,
             metadata=metadata or {},
         )
-        
+
         async with self._lock:
             self._queue.append(failed_item)
             self._by_category[error.category].append(failed_item)
-        
+
         logger.warning(
             f"Added failed item to queue: {item_type}/{item_id}",
             extra={
@@ -420,9 +423,9 @@ class FailedItemsQueue:
                 "retryable": error.retryable,
             }
         )
-        
+
         return failed_item
-    
+
     async def get_retryable(self) -> list[FailedItem]:
         """Get all items that can be retried.
         
@@ -431,7 +434,7 @@ class FailedItemsQueue:
         """
         async with self._lock:
             return [item for item in self._queue if item.can_retry]
-    
+
     async def get_by_category(self, category: ErrorCategory) -> list[FailedItem]:
         """Get failed items by error category.
         
@@ -443,7 +446,7 @@ class FailedItemsQueue:
         """
         async with self._lock:
             return list(self._by_category.get(category, []))
-    
+
     async def get_for_review(self) -> list[FailedItem]:
         """Get items that need manual review (not retryable or max retries exceeded).
         
@@ -452,8 +455,8 @@ class FailedItemsQueue:
         """
         async with self._lock:
             return [item for item in self._queue if not item.can_retry]
-    
-    async def mark_retried(self, item_id: str) -> Optional[FailedItem]:
+
+    async def mark_retried(self, item_id: str) -> FailedItem | None:
         """Mark an item as retried, incrementing retry count.
         
         Args:
@@ -469,8 +472,8 @@ class FailedItemsQueue:
                     item.last_retry_at = datetime.now(timezone.utc)
                     return item
         return None
-    
-    async def remove(self, item_id: str) -> Optional[FailedItem]:
+
+    async def remove(self, item_id: str) -> FailedItem | None:
         """Remove an item from the queue (e.g., after successful retry).
         
         Args:
@@ -490,7 +493,7 @@ class FailedItemsQueue:
                         cat_list.remove(item)
                     return item
         return None
-    
+
     async def clear(self) -> int:
         """Clear all items from the queue.
         
@@ -503,7 +506,7 @@ class FailedItemsQueue:
             for cat in self._by_category:
                 self._by_category[cat].clear()
             return count
-    
+
     async def get_stats(self) -> dict[str, Any]:
         """Get queue statistics.
         
@@ -514,21 +517,21 @@ class FailedItemsQueue:
             total = len(self._queue)
             retryable = sum(1 for item in self._queue if item.can_retry)
             by_category = {
-                cat.value: len(items) 
+                cat.value: len(items)
                 for cat, items in self._by_category.items()
             }
-            
+
             return {
                 "total": total,
                 "retryable": retryable,
                 "needs_review": total - retryable,
                 "by_category": by_category,
             }
-    
+
     def __len__(self) -> int:
         """Get queue size."""
         return len(self._queue)
-    
+
     async def to_list(self) -> list[dict[str, Any]]:
         """Convert all items to list of dictionaries.
         
@@ -540,7 +543,7 @@ class FailedItemsQueue:
 
 
 # Global failed items queue instance
-_failed_items_queue: Optional[FailedItemsQueue] = None
+_failed_items_queue: FailedItemsQueue | None = None
 
 
 def get_failed_items_queue() -> FailedItemsQueue:
@@ -570,10 +573,10 @@ def categorize_error(error: Exception) -> ErrorCategory:
     """
     if isinstance(error, INECAgentError):
         return error.category
-    
+
     error_type = type(error).__name__.lower()
     error_msg = str(error).lower()
-    
+
     # Network-related errors
     network_indicators = [
         "connection", "timeout", "dns", "socket", "network",
@@ -581,7 +584,7 @@ def categorize_error(error: Exception) -> ErrorCategory:
     ]
     if any(ind in error_type or ind in error_msg for ind in network_indicators):
         return ErrorCategory.NETWORK
-    
+
     # Parsing-related errors
     parsing_indicators = [
         "parse", "json", "xml", "decode", "encode", "format",
@@ -589,7 +592,7 @@ def categorize_error(error: Exception) -> ErrorCategory:
     ]
     if any(ind in error_type or ind in error_msg for ind in parsing_indicators):
         return ErrorCategory.PARSING
-    
+
     # Validation-related errors
     validation_indicators = [
         "validation", "invalid", "constraint", "required",
@@ -597,7 +600,7 @@ def categorize_error(error: Exception) -> ErrorCategory:
     ]
     if any(ind in error_type or ind in error_msg for ind in validation_indicators):
         return ErrorCategory.VALIDATION
-    
+
     # Database-related errors
     db_indicators = [
         "database", "sql", "postgres", "connection pool",
@@ -605,7 +608,7 @@ def categorize_error(error: Exception) -> ErrorCategory:
     ]
     if any(ind in error_type or ind in error_msg for ind in db_indicators):
         return ErrorCategory.DATABASE
-    
+
     return ErrorCategory.UNKNOWN
 
 
@@ -634,15 +637,15 @@ def with_retry(
     """
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         async def async_wrapper(*args: Any, **kwargs: Any) -> T:
-            last_error: Optional[Exception] = None
+            last_error: Exception | None = None
             delay = initial_delay
-            
+
             for attempt in range(max_retries + 1):
                 try:
                     return await func(*args, **kwargs)
                 except retryable_exceptions as e:
                     last_error = e
-                    
+
                     if attempt < max_retries:
                         logger.warning(
                             f"Retry {attempt + 1}/{max_retries} for {func.__name__}",
@@ -666,23 +669,23 @@ def with_retry(
                                 "error": str(e),
                             }
                         )
-            
+
             raise MaxRetriesExceededError(
                 f"Max retries ({max_retries}) exceeded for {func.__name__}",
                 max_retries=max_retries,
                 last_error=last_error,
             )
-        
+
         def sync_wrapper(*args: Any, **kwargs: Any) -> T:
             # For sync functions, run in event loop
             import asyncio
             return asyncio.get_event_loop().run_until_complete(
                 async_wrapper(*args, **kwargs)
             )
-        
+
         # Return appropriate wrapper based on function type
         if asyncio.iscoroutinefunction(func):
             return async_wrapper  # type: ignore
         return sync_wrapper  # type: ignore
-    
+
     return decorator
