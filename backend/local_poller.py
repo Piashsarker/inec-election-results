@@ -17,7 +17,6 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import httpx
 from dotenv import load_dotenv
@@ -35,7 +34,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 class CloudAPIClient:
     """Client for communicating with the cloud backend API."""
-    
+
     def __init__(self, base_url: str, api_key: str):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -43,7 +42,7 @@ class CloudAPIClient:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
-    
+
     async def health_check(self) -> bool:
         """Check if backend is reachable."""
         async with httpx.AsyncClient() as client:
@@ -53,7 +52,7 @@ class CloudAPIClient:
             except Exception as e:
                 print(f"❌ Backend health check failed: {e}")
                 return False
-    
+
     async def submit_result(self, result: dict) -> dict:
         """Submit a single polling unit result to the backend."""
         async with httpx.AsyncClient() as client:
@@ -65,7 +64,7 @@ class CloudAPIClient:
             )
             response.raise_for_status()
             return response.json()
-    
+
     async def submit_batch(self, results: list[dict]) -> dict:
         """Submit multiple results in a batch."""
         async with httpx.AsyncClient() as client:
@@ -77,7 +76,7 @@ class CloudAPIClient:
             )
             response.raise_for_status()
             return response.json()
-    
+
     async def create_job(self, job_config: dict) -> dict:
         """Create a new scraping job on the backend."""
         async with httpx.AsyncClient() as client:
@@ -89,7 +88,7 @@ class CloudAPIClient:
             )
             response.raise_for_status()
             return response.json()
-    
+
     async def update_job_status(self, job_id: str, status: str, progress: float = 0) -> dict:
         """Update job status on the backend."""
         async with httpx.AsyncClient() as client:
@@ -105,15 +104,15 @@ class CloudAPIClient:
 
 class LocalScraper:
     """Local scraper that uses Playwright to scrape INEC portal."""
-    
+
     def __init__(self):
         self.results = []
-    
+
     async def scrape_election(
         self,
         election_type: str,
-        state: Optional[str] = None,
-        lga: Optional[str] = None,
+        state: str | None = None,
+        lga: str | None = None,
         limit: int = 10,
     ) -> list[dict]:
         """Scrape election results from INEC portal.
@@ -133,41 +132,41 @@ class LocalScraper:
         if lga:
             print(f"   LGA: {lga}")
         print(f"   Limit: {limit} polling units")
-        
+
         try:
-            from app.core.scraper.browser import BrowserManager
-            from app.core.scraper.navigator import PortalNavigator
-            from app.core.scraper.downloader import ResultSheetDownloader
             from app.core.ocr.engine import OCREngine
-            
+            from app.core.scraper.browser import BrowserManager
+            from app.core.scraper.downloader import ResultSheetDownloader
+            from app.core.scraper.navigator import PortalNavigator
+
             # Initialize components
             async with BrowserManager() as browser:
                 navigator = PortalNavigator(browser)
                 downloader = ResultSheetDownloader()
                 ocr = OCREngine()
-                
+
                 # Navigate to election
                 await navigator.navigate_to_election(election_type)
-                
+
                 if state:
                     await navigator.select_state(state)
-                
+
                 if lga:
                     await navigator.select_lga(lga)
-                
+
                 # Get polling units
                 polling_units = await navigator.get_polling_units(limit=limit)
-                
+
                 results = []
                 for i, pu in enumerate(polling_units):
                     print(f"   Processing {i+1}/{len(polling_units)}: {pu['name']}")
-                    
+
                     # Download result sheet
                     image_path = await downloader.download(pu["image_url"])
-                    
+
                     # Extract data with OCR
                     extraction = await ocr.extract(image_path)
-                    
+
                     if extraction.is_valid:
                         result = {
                             "polling_unit_code": pu["code"],
@@ -189,14 +188,14 @@ class LocalScraper:
                         results.append(result)
                     else:
                         print(f"   ⚠️ Low confidence extraction for {pu['name']}")
-                
+
                 return results
-                
+
         except ImportError as e:
             print(f"❌ Missing dependency: {e}")
             print("   Running in demo mode with sample data...")
             return self._get_demo_results(election_type, state, limit)
-    
+
     def _get_demo_results(self, election_type: str, state: str, limit: int) -> list[dict]:
         """Generate demo results for testing."""
         demo_results = []
@@ -232,16 +231,16 @@ async def main():
     parser.add_argument("--limit", "-n", type=int, default=10, help="Max polling units")
     parser.add_argument("--dry-run", action="store_true", help="Don't submit to backend")
     args = parser.parse_args()
-    
+
     print("🇳🇬 INEC Election Results - Local Poller")
     print("=" * 50)
     print(f"Backend URL: {BACKEND_URL}")
     print(f"API Key: {'***' + API_KEY[-4:] if API_KEY else 'NOT SET'}")
     print()
-    
+
     # Initialize API client
     api_client = CloudAPIClient(BACKEND_URL, API_KEY)
-    
+
     # Health check
     if not args.dry_run:
         print("🔗 Checking backend connection...")
@@ -250,10 +249,10 @@ async def main():
         else:
             print("❌ Cannot reach backend. Check BACKEND_URL and try again.")
             return
-    
+
     # Initialize scraper
     scraper = LocalScraper()
-    
+
     # Run scraping
     print()
     results = await scraper.scrape_election(
@@ -262,14 +261,14 @@ async def main():
         lga=args.lga,
         limit=args.limit,
     )
-    
+
     print()
     print(f"📊 Scraped {len(results)} results")
-    
+
     if not results:
         print("No results to submit")
         return
-    
+
     # Submit to backend
     if args.dry_run:
         print("\n🔍 Dry run - not submitting to backend")
@@ -285,7 +284,7 @@ async def main():
             print(f"   {e.response.text}")
         except Exception as e:
             print(f"❌ Error: {e}")
-    
+
     print("\n✅ Done!")
 
 

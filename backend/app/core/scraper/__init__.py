@@ -6,20 +6,20 @@ from app.core.scraper.browser import (
     MaxRetriesExceeded,
     NetworkError,
 )
-from app.core.scraper.navigator import (
-    PortalNavigator,
-    NavigationError,
-    ElectionType,
-    State,
-    LGA,
-    Ward,
-    PollingUnit,
-)
 from app.core.scraper.downloader import (
-    ResultSheetDownloader,
-    DownloadResult,
     DownloadError,
+    DownloadResult,
     FileFormat,
+    ResultSheetDownloader,
+)
+from app.core.scraper.navigator import (
+    LGA,
+    ElectionType,
+    NavigationError,
+    PollingUnit,
+    PortalNavigator,
+    State,
+    Ward,
 )
 
 __all__ = [

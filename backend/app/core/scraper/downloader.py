@@ -4,14 +4,14 @@ This module handles downloading result sheet images from polling units.
 
 Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
 """
+from __future__ import annotations
+
 
 import logging
-import os
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 import httpx
 
@@ -32,16 +32,16 @@ class FileFormat(str, Enum):
 class DownloadResult:
     """Result of a download operation."""
     success: bool
-    file_path: Optional[str]
-    file_format: Optional[FileFormat]
+    file_path: str | None
+    file_format: FileFormat | None
     file_size: int
-    error: Optional[str] = None
+    error: str | None = None
     attempts: int = 1
 
 
 class DownloadError(Exception):
     """Raised when a download fails."""
-    
+
     def __init__(self, url: str, message: str, attempts: int = 0):
         self.url = url
         self.message = message
@@ -65,12 +65,12 @@ class ResultSheetDownloader:
     - 2.4: Retry up to 3 times on failure
     - 2.5: Log missing results and continue
     """
-    
+
     def __init__(
         self,
-        storage_path: Optional[str] = None,
+        storage_path: str | None = None,
         max_retries: int = 3,
-        browser_manager: Optional[BrowserManager] = None,
+        browser_manager: BrowserManager | None = None,
     ):
         """Initialize the downloader.
         
@@ -83,17 +83,17 @@ class ResultSheetDownloader:
         self.storage_path = Path(storage_path or settings.scraping.storage_path)
         self.max_retries = max_retries
         self.browser = browser_manager
-        
+
         # Ensure storage directory exists
         self.storage_path.mkdir(parents=True, exist_ok=True)
-        
+
         # Track download progress
         self.total_downloads = 0
         self.successful_downloads = 0
         self.failed_downloads = 0
-        
+
         logger.info(f"ResultSheetDownloader initialized with storage: {self.storage_path}")
-    
+
     def _generate_filename(
         self,
         election_type: str,
@@ -117,15 +117,15 @@ class ResultSheetDownloader:
             Filename string with hierarchy and timestamp
         """
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        
+
         # Sanitize components for filename
         components = [election_type, state, lga, ward, pu_id, timestamp]
         sanitized = [c.replace("/", "_").replace("\\", "_").replace(" ", "_") for c in components]
-        
+
         filename = "_".join(sanitized) + f".{file_format.value}"
         return filename
-    
-    def _detect_format(self, url: str, content_type: Optional[str] = None) -> FileFormat:
+
+    def _detect_format(self, url: str, content_type: str | None = None) -> FileFormat:
         """Detect file format from URL or content type.
         
         Args:
@@ -136,14 +136,14 @@ class ResultSheetDownloader:
             Detected FileFormat
         """
         url_lower = url.lower()
-        
+
         if url_lower.endswith(".pdf") or (content_type and "pdf" in content_type):
             return FileFormat.PDF
         elif url_lower.endswith(".jpg") or url_lower.endswith(".jpeg"):
             return FileFormat.JPG
         else:
             return FileFormat.PNG
-    
+
     async def download(
         self,
         url: str,
@@ -167,16 +167,16 @@ class ResultSheetDownloader:
             DownloadResult with file path and status
         """
         self.total_downloads += 1
-        last_error: Optional[str] = None
-        
+        last_error: str | None = None
+
         for attempt in range(1, self.max_retries + 1):
             try:
                 logger.debug(f"Download attempt {attempt}/{self.max_retries} for {url}")
-                
+
                 # Use httpx for direct downloads
                 async with httpx.AsyncClient(timeout=30.0) as client:
                     response = await client.get(url, follow_redirects=True)
-                    
+
                     if response.status_code == 404:
                         # Result sheet not available
                         logger.warning(
@@ -192,28 +192,28 @@ class ResultSheetDownloader:
                             error="Result sheet not available",
                             attempts=attempt,
                         )
-                    
+
                     response.raise_for_status()
-                    
+
                     # Detect format and generate filename
                     content_type = response.headers.get("content-type", "")
                     file_format = self._detect_format(url, content_type)
                     filename = self._generate_filename(
                         election_type, state, lga, ward, pu_id, file_format
                     )
-                    
+
                     # Save file
                     file_path = self.storage_path / filename
                     file_path.write_bytes(response.content)
-                    
+
                     file_size = len(response.content)
                     self.successful_downloads += 1
-                    
+
                     logger.info(
                         f"Downloaded result sheet: {filename}",
                         extra={"size": file_size, "format": file_format.value},
                     )
-                    
+
                     return DownloadResult(
                         success=True,
                         file_path=str(file_path),
@@ -221,24 +221,24 @@ class ResultSheetDownloader:
                         file_size=file_size,
                         attempts=attempt,
                     )
-                    
+
             except httpx.HTTPStatusError as e:
                 last_error = f"HTTP {e.response.status_code}"
                 logger.warning(f"HTTP error on attempt {attempt}: {last_error}")
-                
+
             except httpx.RequestError as e:
                 last_error = str(e)
                 logger.warning(f"Request error on attempt {attempt}: {last_error}")
-                
+
             except Exception as e:
                 last_error = str(e)
                 logger.warning(f"Unexpected error on attempt {attempt}: {last_error}")
-            
+
             # Wait before retry (simple backoff)
             if attempt < self.max_retries:
                 import asyncio
                 await asyncio.sleep(attempt * 2)
-        
+
         # All retries exhausted
         self.failed_downloads += 1
         logger.error(
@@ -253,7 +253,7 @@ class ResultSheetDownloader:
                 "last_error": last_error,
             },
         )
-        
+
         return DownloadResult(
             success=False,
             file_path=None,
@@ -262,7 +262,7 @@ class ResultSheetDownloader:
             error=last_error,
             attempts=self.max_retries,
         )
-    
+
     def get_progress(self) -> dict:
         """Get download progress statistics.
         
@@ -274,7 +274,7 @@ class ResultSheetDownloader:
             "completed": self.successful_downloads,
             "failed": self.failed_downloads,
         }
-    
+
     def reset_progress(self) -> None:
         """Reset progress counters."""
         self.total_downloads = 0

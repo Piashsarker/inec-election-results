@@ -5,8 +5,6 @@ Provides endpoints for viewing aggregated election results at ward, LGA, and sta
 Requirements: 5.1, 5.2
 """
 
-from decimal import Decimal
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -39,7 +37,7 @@ class AggregationResponse(BaseModel):
     location_name: str
     election_type_id: UUID
     election_type_code: str
-    party_results: List[PartyAggregationResponse] = []
+    party_results: list[PartyAggregationResponse] = []
     total_valid_votes: int = 0
     total_accredited_voters: int = 0
     total_rejected_votes: int = 0
@@ -100,13 +98,13 @@ async def get_ward_aggregation(
     """
     service = AggregationService(session)
     result = await service.aggregate_ward(ward_id, election_type_id)
-    
+
     if result is None:
         raise HTTPException(
             status_code=404,
             detail="Ward or election type not found"
         )
-    
+
     return _convert_aggregation_result(result)
 
 
@@ -131,13 +129,13 @@ async def get_lga_aggregation(
     """
     service = AggregationService(session)
     result = await service.aggregate_lga(lga_id, election_type_id)
-    
+
     if result is None:
         raise HTTPException(
             status_code=404,
             detail="LGA or election type not found"
         )
-    
+
     return _convert_aggregation_result(result)
 
 
@@ -162,11 +160,11 @@ async def get_state_aggregation(
     """
     service = AggregationService(session)
     result = await service.aggregate_state(state_id, election_type_id)
-    
+
     if result is None:
         raise HTTPException(
             status_code=404,
             detail="State or election type not found"
         )
-    
+
     return _convert_aggregation_result(result)

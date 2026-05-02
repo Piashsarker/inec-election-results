@@ -5,6 +5,8 @@ integrating with the OrchestratorAgent for job state management.
 
 Requirements: 6.3, 6.4, 8.1, 8.2
 """
+from __future__ import annotations
+
 
 import asyncio
 import csv
@@ -14,7 +16,7 @@ import logging
 import os
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from celery import Task, current_task
 from celery.exceptions import SoftTimeLimitExceeded
@@ -93,9 +95,9 @@ def run_async(coro):
 
 class ScrapingTask(Task):
     """Base task class for scraping jobs with state management."""
-    
-    _orchestrator: Optional[OrchestratorAgent] = None
-    
+
+    _orchestrator: OrchestratorAgent | None = None
+
     @property
     def orchestrator(self) -> OrchestratorAgent:
         """Get or create the orchestrator agent."""
@@ -105,11 +107,11 @@ class ScrapingTask(Task):
                 progress_callback=self._update_progress,
             )
         return self._orchestrator
-    
+
     def _save_checkpoint(self, checkpoint: JobCheckpoint) -> None:
         """Save checkpoint to database."""
         run_async(self._async_save_checkpoint(checkpoint))
-    
+
     async def _async_save_checkpoint(self, checkpoint: JobCheckpoint) -> None:
         """Async implementation of checkpoint saving."""
         async with _async_session_factory() as session:
@@ -118,7 +120,7 @@ class ScrapingTask(Task):
                     select(ScrapingJob).where(ScrapingJob.id == uuid.UUID(checkpoint.job_id))
                 )
                 job = result.scalar_one_or_none()
-                
+
                 if job:
                     job.checkpoint_data = checkpoint.to_dict()
                     job.last_processed_pu = checkpoint.last_processed_pu
@@ -127,7 +129,7 @@ class ScrapingTask(Task):
             except Exception as e:
                 logger.error(f"Failed to save checkpoint: {e}")
                 await session.rollback()
-    
+
     def _update_progress(self, progress: JobProgress) -> None:
         """Update task progress state."""
         if current_task:
@@ -145,10 +147,10 @@ class ScrapingTask(Task):
                     "current_unit": progress.current_unit,
                 },
             )
-        
+
         # Also update database
         run_async(self._async_update_job_progress(progress))
-    
+
     async def _async_update_job_progress(self, progress: JobProgress) -> None:
         """Async implementation of job progress update."""
         async with _async_session_factory() as session:
@@ -157,16 +159,16 @@ class ScrapingTask(Task):
                     select(ScrapingJob).where(ScrapingJob.id == uuid.UUID(progress.job_id))
                 )
                 job = result.scalar_one_or_none()
-                
+
                 if job:
                     job.status = progress.status.value
                     job.processed_count = progress.processed_count
                     job.success_count = progress.success_count
                     job.failed_count = progress.failed_count
-                    
+
                     if progress.status == JobStatus.COMPLETED:
                         job.completed_at = datetime.utcnow()
-                    
+
                     await session.commit()
             except Exception as e:
                 logger.error(f"Failed to update job progress: {e}")
@@ -184,12 +186,12 @@ class ScrapingTask(Task):
 def run_scraping_job(
     self: ScrapingTask,
     job_id: str,
-    election_type: Optional[str] = None,
-    target_state: Optional[str] = None,
-    target_lga: Optional[str] = None,
-    target_ward: Optional[str] = None,
+    election_type: str | None = None,
+    target_state: str | None = None,
+    target_lga: str | None = None,
+    target_ward: str | None = None,
     resume_from_checkpoint: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run a scraping job with the orchestrator agent.
     
     This task manages the scraping workflow, including:
@@ -211,7 +213,7 @@ def run_scraping_job(
     Requirements: 6.3, 6.4
     """
     logger.info(f"Starting scraping job {job_id}")
-    
+
     try:
         return run_async(
             _async_run_scraping_job(
@@ -238,12 +240,12 @@ def run_scraping_job(
 async def _async_run_scraping_job(
     task: ScrapingTask,
     job_id: str,
-    election_type: Optional[str],
-    target_state: Optional[str],
-    target_lga: Optional[str],
-    target_ward: Optional[str],
+    election_type: str | None,
+    target_state: str | None,
+    target_lga: str | None,
+    target_ward: str | None,
     resume_from_checkpoint: bool,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Async implementation of the scraping job."""
     async with _async_session_factory() as session:
         # Get or create job record
@@ -251,16 +253,16 @@ async def _async_run_scraping_job(
             select(ScrapingJob).where(ScrapingJob.id == uuid.UUID(job_id))
         )
         job = result.scalar_one_or_none()
-        
+
         if not job:
             logger.error(f"Job {job_id} not found")
             return {"error": "Job not found", "job_id": job_id}
-        
+
         # Update job status to running
         job.status = JobStatus.RUNNING.value
         job.started_at = datetime.utcnow()
         await session.commit()
-        
+
         # Log job start
         log_entry = JobLog(
             job_id=job.id,
@@ -277,7 +279,7 @@ async def _async_run_scraping_job(
         )
         session.add(log_entry)
         await session.commit()
-        
+
         # Configure orchestrator
         config = JobConfig(
             election_type=election_type,
@@ -286,10 +288,10 @@ async def _async_run_scraping_job(
             target_ward=target_ward,
             max_concurrent=settings.scraping.max_concurrent_requests,
         )
-        
+
         orchestrator = task.orchestrator
         orchestrator.config = config
-        
+
         # Resume from checkpoint if requested
         if resume_from_checkpoint and job.checkpoint_data:
             checkpoint = JobCheckpoint.from_dict(job.checkpoint_data)
@@ -298,26 +300,26 @@ async def _async_run_scraping_job(
         else:
             # Start new job
             await orchestrator.start_job(job_id=job_id)
-        
+
         # Get polling units to process (placeholder - actual implementation
         # would query the portal or database)
         # For now, we'll simulate with an empty list
         # In production, this would integrate with the NavigatorAgent
-        polling_units: List[Any] = []
-        
+        polling_units: list[Any] = []
+
         # Update total count
         job.total_polling_units = len(polling_units)
         await session.commit()
-        
+
         # Process polling units (placeholder for actual processing)
         # In production, this would call orchestrator.distribute_work()
         # with actual polling units and processing function
-        
+
         # Mark job as completed
         job.status = JobStatus.COMPLETED.value
         job.completed_at = datetime.utcnow()
         await session.commit()
-        
+
         # Log completion
         log_entry = JobLog(
             job_id=job.id,
@@ -332,14 +334,14 @@ async def _async_run_scraping_job(
         )
         session.add(log_entry)
         await session.commit()
-        
+
         return orchestrator.get_summary(job_id)
 
 
 async def _save_job_state(
     job_id: str,
     status: JobStatus,
-    error_message: Optional[str] = None,
+    error_message: str | None = None,
 ) -> None:
     """Save job state to database."""
     async with _async_session_factory() as session:
@@ -348,12 +350,12 @@ async def _save_job_state(
                 select(ScrapingJob).where(ScrapingJob.id == uuid.UUID(job_id))
             )
             job = result.scalar_one_or_none()
-            
+
             if job:
                 job.status = status.value
                 if status in (JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED):
                     job.completed_at = datetime.utcnow()
-                
+
                 if error_message:
                     log_entry = JobLog(
                         job_id=job.id,
@@ -361,7 +363,7 @@ async def _save_job_state(
                         message=error_message,
                     )
                     session.add(log_entry)
-                
+
                 await session.commit()
         except Exception as e:
             logger.error(f"Failed to save job state: {e}")
@@ -378,12 +380,12 @@ async def _save_job_state(
 def generate_csv_export(
     self,
     export_id: str,
-    election_type_id: Optional[str] = None,
-    state_id: Optional[str] = None,
-    lga_id: Optional[str] = None,
-    ward_id: Optional[str] = None,
+    election_type_id: str | None = None,
+    state_id: str | None = None,
+    lga_id: str | None = None,
+    ward_id: str | None = None,
     include_metadata: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generate a CSV export of election results.
     
     This task queries election results based on filters and generates
@@ -403,7 +405,7 @@ def generate_csv_export(
     Requirements: 8.1, 8.3
     """
     logger.info(f"Starting CSV export {export_id}")
-    
+
     try:
         return run_async(
             _async_generate_csv_export(
@@ -422,12 +424,12 @@ def generate_csv_export(
 
 async def _async_generate_csv_export(
     export_id: str,
-    election_type_id: Optional[str],
-    state_id: Optional[str],
-    lga_id: Optional[str],
-    ward_id: Optional[str],
+    election_type_id: str | None,
+    state_id: str | None,
+    lga_id: str | None,
+    ward_id: str | None,
     include_metadata: bool,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Async implementation of CSV export generation."""
     async with _async_session_factory() as session:
         # Build query with filters
@@ -448,7 +450,7 @@ async def _async_generate_csv_export(
             .join(State, LGA.state_id == State.id)
             .join(ElectionType, ElectionResult.election_type_id == ElectionType.id)
         )
-        
+
         # Apply filters
         if election_type_id:
             query = query.where(ElectionResult.election_type_id == uuid.UUID(election_type_id))
@@ -458,14 +460,14 @@ async def _async_generate_csv_export(
             query = query.where(LGA.id == uuid.UUID(lga_id))
         if ward_id:
             query = query.where(Ward.id == uuid.UUID(ward_id))
-        
+
         result = await session.execute(query)
         rows = result.fetchall()
-        
+
         # Generate CSV content
         output = io.StringIO()
         writer = csv.writer(output)
-        
+
         # Write header
         headers = [
             "election_type",
@@ -479,24 +481,24 @@ async def _async_generate_csv_export(
             "rejected_votes",
             "confidence_score",
         ]
-        
+
         if include_metadata:
             headers.extend(["extracted_at", "source_image_path"])
-        
+
         # Add party columns dynamically
         # First, get all unique parties
         party_query = select(PoliticalParty.code).order_by(PoliticalParty.code)
         party_result = await session.execute(party_query)
         party_codes = [row[0] for row in party_result.fetchall()]
         headers.extend(party_codes)
-        
+
         writer.writerow(headers)
-        
+
         # Write data rows
         record_count = 0
         for row in rows:
             election_result = row[0]
-            
+
             # Get party results for this election result
             party_results_query = (
                 select(PartyResult, PoliticalParty.code)
@@ -505,7 +507,7 @@ async def _async_generate_csv_export(
             )
             party_results = await session.execute(party_results_query)
             party_votes = {pr[1]: pr[0].vote_count for pr in party_results.fetchall()}
-            
+
             # Build row data
             row_data = [
                 row.election_type_code,
@@ -519,30 +521,30 @@ async def _async_generate_csv_export(
                 election_result.rejected_votes,
                 float(election_result.confidence_score),
             ]
-            
+
             if include_metadata:
                 row_data.extend([
                     election_result.extracted_at.isoformat() if election_result.extracted_at else "",
                     election_result.source_image_path or "",
                 ])
-            
+
             # Add party vote counts
             for party_code in party_codes:
                 row_data.append(party_votes.get(party_code, 0))
-            
+
             writer.writerow(row_data)
             record_count += 1
-        
+
         # Save to file
         export_dir = os.path.join(settings.scraping.storage_path, "exports")
         os.makedirs(export_dir, exist_ok=True)
-        
+
         file_path = os.path.join(export_dir, f"{export_id}.csv")
         with open(file_path, "w", newline="", encoding="utf-8") as f:
             f.write(output.getvalue())
-        
+
         logger.info(f"CSV export {export_id} completed with {record_count} records")
-        
+
         return {
             "export_id": export_id,
             "format": "csv",
@@ -568,13 +570,13 @@ async def _async_generate_csv_export(
 def generate_json_export(
     self,
     export_id: str,
-    election_type_id: Optional[str] = None,
-    state_id: Optional[str] = None,
-    lga_id: Optional[str] = None,
-    ward_id: Optional[str] = None,
+    election_type_id: str | None = None,
+    state_id: str | None = None,
+    lga_id: str | None = None,
+    ward_id: str | None = None,
     include_metadata: bool = True,
-    aggregation_level: Optional[str] = None,
-) -> Dict[str, Any]:
+    aggregation_level: str | None = None,
+) -> dict[str, Any]:
     """Generate a JSON export of election results.
     
     This task queries election results based on filters and generates
@@ -595,7 +597,7 @@ def generate_json_export(
     Requirements: 8.2, 8.3, 8.4
     """
     logger.info(f"Starting JSON export {export_id}")
-    
+
     try:
         return run_async(
             _async_generate_json_export(
@@ -615,16 +617,16 @@ def generate_json_export(
 
 async def _async_generate_json_export(
     export_id: str,
-    election_type_id: Optional[str],
-    state_id: Optional[str],
-    lga_id: Optional[str],
-    ward_id: Optional[str],
+    election_type_id: str | None,
+    state_id: str | None,
+    lga_id: str | None,
+    ward_id: str | None,
     include_metadata: bool,
-    aggregation_level: Optional[str],
-) -> Dict[str, Any]:
+    aggregation_level: str | None,
+) -> dict[str, Any]:
     """Async implementation of JSON export generation."""
     async with _async_session_factory() as session:
-        export_data: Dict[str, Any] = {
+        export_data: dict[str, Any] = {
             "export_id": export_id,
             "format": "json",
             "generated_at": datetime.utcnow().isoformat(),
@@ -635,7 +637,7 @@ async def _async_generate_json_export(
                 "ward_id": ward_id,
             },
         }
-        
+
         if aggregation_level:
             # Generate aggregated export
             export_data["aggregation_level"] = aggregation_level
@@ -657,19 +659,19 @@ async def _async_generate_json_export(
                 ward_id,
                 include_metadata,
             )
-        
+
         export_data["record_count"] = len(export_data["results"])
-        
+
         # Save to file
         export_dir = os.path.join(settings.scraping.storage_path, "exports")
         os.makedirs(export_dir, exist_ok=True)
-        
+
         file_path = os.path.join(export_dir, f"{export_id}.json")
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(export_data, f, indent=2, default=str)
-        
+
         logger.info(f"JSON export {export_id} completed with {export_data['record_count']} records")
-        
+
         return {
             "export_id": export_id,
             "format": "json",
@@ -682,12 +684,12 @@ async def _async_generate_json_export(
 
 async def _generate_detailed_results(
     session: AsyncSession,
-    election_type_id: Optional[str],
-    state_id: Optional[str],
-    lga_id: Optional[str],
-    ward_id: Optional[str],
+    election_type_id: str | None,
+    state_id: str | None,
+    lga_id: str | None,
+    ward_id: str | None,
     include_metadata: bool,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Generate detailed (non-aggregated) results for JSON export."""
     # Build query with filters
     query = (
@@ -710,7 +712,7 @@ async def _generate_detailed_results(
         .join(State, LGA.state_id == State.id)
         .join(ElectionType, ElectionResult.election_type_id == ElectionType.id)
     )
-    
+
     # Apply filters
     if election_type_id:
         query = query.where(ElectionResult.election_type_id == uuid.UUID(election_type_id))
@@ -720,15 +722,15 @@ async def _generate_detailed_results(
         query = query.where(LGA.id == uuid.UUID(lga_id))
     if ward_id:
         query = query.where(Ward.id == uuid.UUID(ward_id))
-    
+
     result = await session.execute(query)
     rows = result.fetchall()
-    
-    results: List[Dict[str, Any]] = []
-    
+
+    results: list[dict[str, Any]] = []
+
     for row in rows:
         election_result = row[0]
-        
+
         # Get party results
         party_results_query = (
             select(PartyResult, PoliticalParty.name, PoliticalParty.code)
@@ -736,7 +738,7 @@ async def _generate_detailed_results(
             .where(PartyResult.election_result_id == election_result.id)
         )
         party_results = await session.execute(party_results_query)
-        
+
         party_votes = [
             {
                 "party_name": pr[1],
@@ -746,8 +748,8 @@ async def _generate_detailed_results(
             }
             for pr in party_results.fetchall()
         ]
-        
-        result_data: Dict[str, Any] = {
+
+        result_data: dict[str, Any] = {
             "id": str(election_result.id),
             "election_type": {
                 "name": row.election_type_name,
@@ -771,37 +773,37 @@ async def _generate_detailed_results(
             "party_results": party_votes,
             "confidence_score": float(election_result.confidence_score),
         }
-        
+
         if include_metadata:
             result_data["metadata"] = {
                 "extracted_at": election_result.extracted_at.isoformat() if election_result.extracted_at else None,
                 "source_image_path": election_result.source_image_path,
                 "created_at": election_result.created_at.isoformat() if election_result.created_at else None,
             }
-        
+
         results.append(result_data)
-    
+
     return results
 
 
 async def _generate_aggregated_results(
     session: AsyncSession,
-    election_type_id: Optional[str],
-    state_id: Optional[str],
-    lga_id: Optional[str],
-    ward_id: Optional[str],
+    election_type_id: str | None,
+    state_id: str | None,
+    lga_id: str | None,
+    ward_id: str | None,
     aggregation_level: str,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Generate aggregated results for JSON export."""
     aggregation_service = AggregationService(session)
-    results: List[Dict[str, Any]] = []
-    
+    results: list[dict[str, Any]] = []
+
     if not election_type_id:
         # Need election type for aggregation
         return results
-    
+
     election_type_uuid = uuid.UUID(election_type_id)
-    
+
     if aggregation_level == "ward" and ward_id:
         # Single ward aggregation
         agg_result = await aggregation_service.aggregate_ward(
@@ -809,7 +811,7 @@ async def _generate_aggregated_results(
         )
         if agg_result:
             results.append(_aggregation_to_dict(agg_result))
-    
+
     elif aggregation_level == "lga" and lga_id:
         # Single LGA aggregation
         agg_result = await aggregation_service.aggregate_lga(
@@ -817,7 +819,7 @@ async def _generate_aggregated_results(
         )
         if agg_result:
             results.append(_aggregation_to_dict(agg_result))
-    
+
     elif aggregation_level == "state" and state_id:
         # Single state aggregation
         agg_result = await aggregation_service.aggregate_state(
@@ -825,7 +827,7 @@ async def _generate_aggregated_results(
         )
         if agg_result:
             results.append(_aggregation_to_dict(agg_result))
-    
+
     elif aggregation_level == "ward":
         # All wards in scope
         ward_query = select(Ward.id)
@@ -835,33 +837,33 @@ async def _generate_aggregated_results(
             ward_query = ward_query.join(LGA, Ward.lga_id == LGA.id).where(
                 LGA.state_id == uuid.UUID(state_id)
             )
-        
+
         ward_result = await session.execute(ward_query)
         ward_ids = [row[0] for row in ward_result.fetchall()]
-        
+
         for w_id in ward_ids:
             agg_result = await aggregation_service.aggregate_ward(w_id, election_type_uuid)
             if agg_result:
                 results.append(_aggregation_to_dict(agg_result))
-    
+
     elif aggregation_level == "lga":
         # All LGAs in scope
         lga_query = select(LGA.id)
         if state_id:
             lga_query = lga_query.where(LGA.state_id == uuid.UUID(state_id))
-        
+
         lga_result = await session.execute(lga_query)
         lga_ids = [row[0] for row in lga_result.fetchall()]
-        
+
         for l_id in lga_ids:
             agg_result = await aggregation_service.aggregate_lga(l_id, election_type_uuid)
             if agg_result:
                 results.append(_aggregation_to_dict(agg_result))
-    
+
     return results
 
 
-def _aggregation_to_dict(agg_result) -> Dict[str, Any]:
+def _aggregation_to_dict(agg_result) -> dict[str, Any]:
     """Convert AggregationResult to dictionary."""
     return {
         "level": agg_result.level,
@@ -900,7 +902,7 @@ def _aggregation_to_dict(agg_result) -> Dict[str, Any]:
 @celery_app.task(
     name="app.workers.tasks.pause_scraping_job",
 )
-def pause_scraping_job(job_id: str) -> Dict[str, Any]:
+def pause_scraping_job(job_id: str) -> dict[str, Any]:
     """Pause a running scraping job.
     
     Args:
@@ -915,22 +917,22 @@ def pause_scraping_job(job_id: str) -> Dict[str, Any]:
     return run_async(_async_pause_job(job_id))
 
 
-async def _async_pause_job(job_id: str) -> Dict[str, Any]:
+async def _async_pause_job(job_id: str) -> dict[str, Any]:
     """Async implementation of job pause."""
     async with _async_session_factory() as session:
         result = await session.execute(
             select(ScrapingJob).where(ScrapingJob.id == uuid.UUID(job_id))
         )
         job = result.scalar_one_or_none()
-        
+
         if not job:
             return {"success": False, "error": "Job not found"}
-        
+
         if job.status != JobStatus.RUNNING.value:
             return {"success": False, "error": f"Job is not running (status: {job.status})"}
-        
+
         job.status = JobStatus.PAUSED.value
-        
+
         log_entry = JobLog(
             job_id=job.id,
             level="INFO",
@@ -938,14 +940,14 @@ async def _async_pause_job(job_id: str) -> Dict[str, Any]:
         )
         session.add(log_entry)
         await session.commit()
-        
+
         return {"success": True, "job_id": job_id, "status": JobStatus.PAUSED.value}
 
 
 @celery_app.task(
     name="app.workers.tasks.resume_scraping_job",
 )
-def resume_scraping_job(job_id: str) -> Dict[str, Any]:
+def resume_scraping_job(job_id: str) -> dict[str, Any]:
     """Resume a paused scraping job.
     
     Args:
@@ -960,20 +962,20 @@ def resume_scraping_job(job_id: str) -> Dict[str, Any]:
     return run_async(_async_resume_job(job_id))
 
 
-async def _async_resume_job(job_id: str) -> Dict[str, Any]:
+async def _async_resume_job(job_id: str) -> dict[str, Any]:
     """Async implementation of job resume."""
     async with _async_session_factory() as session:
         result = await session.execute(
             select(ScrapingJob).where(ScrapingJob.id == uuid.UUID(job_id))
         )
         job = result.scalar_one_or_none()
-        
+
         if not job:
             return {"success": False, "error": "Job not found"}
-        
+
         if job.status != JobStatus.PAUSED.value:
             return {"success": False, "error": f"Job is not paused (status: {job.status})"}
-        
+
         # Queue a new task to resume the job
         task = run_scraping_job.delay(
             job_id=job_id,
@@ -983,7 +985,7 @@ async def _async_resume_job(job_id: str) -> Dict[str, Any]:
             target_ward=job.target_ward,
             resume_from_checkpoint=True,
         )
-        
+
         log_entry = JobLog(
             job_id=job.id,
             level="INFO",
@@ -991,7 +993,7 @@ async def _async_resume_job(job_id: str) -> Dict[str, Any]:
         )
         session.add(log_entry)
         await session.commit()
-        
+
         return {
             "success": True,
             "job_id": job_id,
@@ -1003,7 +1005,7 @@ async def _async_resume_job(job_id: str) -> Dict[str, Any]:
 @celery_app.task(
     name="app.workers.tasks.cancel_scraping_job",
 )
-def cancel_scraping_job(job_id: str) -> Dict[str, Any]:
+def cancel_scraping_job(job_id: str) -> dict[str, Any]:
     """Cancel a running or paused scraping job.
     
     Args:
@@ -1018,23 +1020,23 @@ def cancel_scraping_job(job_id: str) -> Dict[str, Any]:
     return run_async(_async_cancel_job(job_id))
 
 
-async def _async_cancel_job(job_id: str) -> Dict[str, Any]:
+async def _async_cancel_job(job_id: str) -> dict[str, Any]:
     """Async implementation of job cancellation."""
     async with _async_session_factory() as session:
         result = await session.execute(
             select(ScrapingJob).where(ScrapingJob.id == uuid.UUID(job_id))
         )
         job = result.scalar_one_or_none()
-        
+
         if not job:
             return {"success": False, "error": "Job not found"}
-        
+
         if job.status not in (JobStatus.RUNNING.value, JobStatus.PAUSED.value, JobStatus.QUEUED.value):
             return {"success": False, "error": f"Job cannot be cancelled (status: {job.status})"}
-        
+
         job.status = JobStatus.CANCELLED.value
         job.completed_at = datetime.utcnow()
-        
+
         log_entry = JobLog(
             job_id=job.id,
             level="INFO",
@@ -1042,5 +1044,5 @@ async def _async_cancel_job(job_id: str) -> Dict[str, Any]:
         )
         session.add(log_entry)
         await session.commit()
-        
+
         return {"success": True, "job_id": job_id, "status": JobStatus.CANCELLED.value}

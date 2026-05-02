@@ -5,26 +5,22 @@ election results from the INEC portal.
 
 Requirements: 1.1, 2.1, 3.1, 4.2
 """
+from __future__ import annotations
+
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, TypedDict
 
 from langgraph.graph import END, StateGraph
-
-from app.core.extractor.parser import ExtractionResult
-from app.core.extractor.validator import ValidationResult
-from app.core.ocr.engine import OCROrchestrationResult
-from app.core.scraper.downloader import DownloadResult
-from app.core.scraper.navigator import PollingUnit
 
 logger = logging.getLogger("inec_agent.agents.graph")
 
 
 class ProcessingStatus(str, Enum):
     """Status of the processing workflow."""
-    
+
     PENDING = "pending"
     NAVIGATING = "navigating"
     DOWNLOADING = "downloading"
@@ -41,7 +37,7 @@ class ProcessingStatus(str, Enum):
 @dataclass
 class LocationInfo:
     """Current location in the portal hierarchy."""
-    
+
     election_type: str = ""
     state: str = ""
     lga: str = ""
@@ -53,7 +49,7 @@ class LocationInfo:
 @dataclass
 class DownloadedImage:
     """Information about a downloaded result sheet image."""
-    
+
     file_path: str
     file_format: str
     file_size: int
@@ -64,10 +60,10 @@ class DownloadedImage:
 @dataclass
 class ProcessingError:
     """Error that occurred during processing."""
-    
+
     stage: str
     message: str
-    details: Optional[Dict[str, Any]] = None
+    details: dict[str, Any] | None = None
     recoverable: bool = True
 
 
@@ -89,28 +85,28 @@ class AgentState(TypedDict):
         status: Current processing status
         metadata: Additional metadata for the workflow
     """
-    
+
     # Job identification
     job_id: str
-    
+
     # Navigation state
-    current_location: Dict[str, str]
-    polling_unit: Optional[Dict[str, Any]]
-    
+    current_location: dict[str, str]
+    polling_unit: dict[str, Any] | None
+
     # Processing results
-    downloaded_images: List[Dict[str, Any]]
-    ocr_results: Optional[Dict[str, Any]]
-    extracted_data: Optional[Dict[str, Any]]
-    validation_results: Optional[Dict[str, Any]]
-    
+    downloaded_images: list[dict[str, Any]]
+    ocr_results: dict[str, Any] | None
+    extracted_data: dict[str, Any] | None
+    validation_results: dict[str, Any] | None
+
     # Error tracking
-    errors: List[Dict[str, Any]]
-    
+    errors: list[dict[str, Any]]
+
     # Workflow status
     status: str
-    
+
     # Additional metadata
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 def create_initial_state(
@@ -168,12 +164,12 @@ async def navigate_node(state: AgentState) -> AgentState:
         Updated agent state with navigation results
     """
     logger.info(f"Navigate node: Processing job {state['job_id']}")
-    
+
     state["status"] = ProcessingStatus.NAVIGATING.value
-    
+
     # Navigation is handled by NavigatorAgent
     # This node updates state to indicate navigation is complete
-    
+
     return state
 
 
@@ -190,12 +186,12 @@ async def download_node(state: AgentState) -> AgentState:
         Updated agent state with download results
     """
     logger.info(f"Download node: Processing job {state['job_id']}")
-    
+
     state["status"] = ProcessingStatus.DOWNLOADING.value
-    
+
     # Download is handled by NavigatorAgent
     # This node updates state with downloaded image info
-    
+
     return state
 
 
@@ -212,11 +208,11 @@ async def preprocess_node(state: AgentState) -> AgentState:
         Updated agent state with preprocessing results
     """
     logger.info(f"Preprocess node: Processing job {state['job_id']}")
-    
+
     state["status"] = ProcessingStatus.PREPROCESSING.value
-    
+
     # Preprocessing is handled by ProcessorAgent
-    
+
     return state
 
 
@@ -233,11 +229,11 @@ async def ocr_node(state: AgentState) -> AgentState:
         Updated agent state with OCR results
     """
     logger.info(f"OCR node: Processing job {state['job_id']}")
-    
+
     state["status"] = ProcessingStatus.OCR_PROCESSING.value
-    
+
     # OCR is handled by ProcessorAgent
-    
+
     return state
 
 
@@ -254,11 +250,11 @@ async def extract_node(state: AgentState) -> AgentState:
         Updated agent state with extracted data
     """
     logger.info(f"Extract node: Processing job {state['job_id']}")
-    
+
     state["status"] = ProcessingStatus.EXTRACTING.value
-    
+
     # Extraction is handled by ProcessorAgent
-    
+
     return state
 
 
@@ -275,11 +271,11 @@ async def validate_node(state: AgentState) -> AgentState:
         Updated agent state with validation results
     """
     logger.info(f"Validate node: Processing job {state['job_id']}")
-    
+
     state["status"] = ProcessingStatus.VALIDATING.value
-    
+
     # Validation is handled by ValidatorAgent
-    
+
     return state
 
 
@@ -296,13 +292,13 @@ async def store_node(state: AgentState) -> AgentState:
         Updated agent state after storage
     """
     logger.info(f"Store node: Processing job {state['job_id']}")
-    
+
     state["status"] = ProcessingStatus.STORING.value
-    
+
     # Storage is handled by the orchestrator
-    
+
     state["status"] = ProcessingStatus.COMPLETED.value
-    
+
     return state
 
 
@@ -319,13 +315,13 @@ async def flag_node(state: AgentState) -> AgentState:
         Updated agent state after flagging
     """
     logger.info(f"Flag node: Processing job {state['job_id']}")
-    
+
     state["status"] = ProcessingStatus.FLAGGING.value
-    
+
     # Flagging is handled by ValidatorAgent
-    
+
     state["status"] = ProcessingStatus.COMPLETED.value
-    
+
     return state
 
 
@@ -342,14 +338,14 @@ def should_store_or_flag(state: AgentState) -> str:
         "store" if validation passed, "flag" otherwise
     """
     validation_results = state.get("validation_results")
-    
+
     if validation_results is None:
         logger.warning("No validation results found, flagging for review")
         return "flag"
-    
+
     is_valid = validation_results.get("is_valid", False)
     should_flag = validation_results.get("should_flag", True)
-    
+
     if is_valid and not should_flag:
         logger.info("Validation passed, storing result")
         return "store"
@@ -374,7 +370,7 @@ def create_agent_graph() -> StateGraph:
     """
     # Create the workflow graph
     workflow = StateGraph(AgentState)
-    
+
     # Add nodes for each processing step
     workflow.add_node("navigate", navigate_node)
     workflow.add_node("download", download_node)
@@ -384,14 +380,14 @@ def create_agent_graph() -> StateGraph:
     workflow.add_node("validate", validate_node)
     workflow.add_node("store", store_node)
     workflow.add_node("flag", flag_node)
-    
+
     # Add sequential edges for the main processing flow
     workflow.add_edge("navigate", "download")
     workflow.add_edge("download", "preprocess")
     workflow.add_edge("preprocess", "ocr")
     workflow.add_edge("ocr", "extract")
     workflow.add_edge("extract", "validate")
-    
+
     # Add conditional edges for validation routing
     workflow.add_conditional_edges(
         "validate",
@@ -401,14 +397,14 @@ def create_agent_graph() -> StateGraph:
             "flag": "flag",
         }
     )
-    
+
     # Add terminal edges
     workflow.add_edge("store", END)
     workflow.add_edge("flag", END)
-    
+
     # Set the entry point
     workflow.set_entry_point("navigate")
-    
+
     # Compile and return the workflow
     return workflow.compile()
 

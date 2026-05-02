@@ -7,7 +7,7 @@ Requirements: 6.3, 6.4
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from celery import Celery
 
@@ -33,21 +33,21 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
-    
+
     # Task execution settings
     task_acks_late=True,  # Acknowledge tasks after completion for reliability
     task_reject_on_worker_lost=True,  # Reject tasks if worker is lost
     task_track_started=True,  # Track when tasks start
-    
+
     # Result backend settings
     result_expires=86400,  # Results expire after 24 hours
     result_extended=True,  # Store additional task metadata
-    
+
     # Worker settings
     worker_concurrency=settings.celery.worker_concurrency,
     worker_prefetch_multiplier=1,  # Fetch one task at a time for fair distribution
     worker_max_tasks_per_child=100,  # Restart worker after 100 tasks to prevent memory leaks
-    
+
     # Task routing
     task_default_queue=settings.celery.task_default_queue,
     task_queues={
@@ -69,14 +69,14 @@ celery_app.conf.update(
         "app.workers.tasks.generate_csv_export": {"queue": "export"},
         "app.workers.tasks.generate_json_export": {"queue": "export"},
     },
-    
+
     # Beat scheduler settings (for periodic tasks if needed)
     beat_scheduler="celery.beat:PersistentScheduler",
-    
+
     # Retry settings
     task_default_retry_delay=60,  # Default retry delay of 60 seconds
     task_max_retries=3,  # Default max retries
-    
+
     # Soft and hard time limits
     task_soft_time_limit=3600,  # 1 hour soft limit
     task_time_limit=3900,  # 1 hour 5 minutes hard limit
@@ -95,7 +95,7 @@ def get_celery_app() -> Celery:
     return celery_app
 
 
-def get_task_info(task_id: str) -> Dict[str, Any]:
+def get_task_info(task_id: str) -> dict[str, Any]:
     """Get information about a Celery task.
     
     Args:
@@ -105,15 +105,15 @@ def get_task_info(task_id: str) -> Dict[str, Any]:
         Dictionary containing task state and result information
     """
     result = celery_app.AsyncResult(task_id)
-    
-    info: Dict[str, Any] = {
+
+    info: dict[str, Any] = {
         "task_id": task_id,
         "status": result.status,
         "ready": result.ready(),
         "successful": result.successful() if result.ready() else None,
         "failed": result.failed() if result.ready() else None,
     }
-    
+
     # Add result or error info if available
     if result.ready():
         if result.successful():
@@ -124,7 +124,7 @@ def get_task_info(task_id: str) -> Dict[str, Any]:
     elif result.status == "PROGRESS":
         # Custom progress state
         info["progress"] = result.info
-    
+
     return info
 
 

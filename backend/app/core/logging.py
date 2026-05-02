@@ -5,6 +5,8 @@ configurable log levels, and consistent formatting across the application.
 
 Requirements: 7.1, 7.2, 7.6
 """
+from __future__ import annotations
+
 
 import json
 import logging
@@ -12,7 +14,7 @@ import logging.handlers
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 class JSONFormatter(logging.Formatter):
@@ -27,7 +29,7 @@ class JSONFormatter(logging.Formatter):
     
     Requirements: 7.1 (log all operations with timestamps, operation type, status)
     """
-    
+
     def __init__(
         self,
         *,
@@ -49,7 +51,7 @@ class JSONFormatter(logging.Formatter):
         self.include_level = include_level
         self.include_logger = include_logger
         self.include_location = include_location
-    
+
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON string.
         
@@ -60,20 +62,20 @@ class JSONFormatter(logging.Formatter):
             JSON-formatted log string
         """
         log_data: dict[str, Any] = {}
-        
+
         # Core fields (Requirement 7.1: timestamp, operation type, status)
         if self.include_timestamp:
             log_data["timestamp"] = datetime.now(timezone.utc).isoformat()
-        
+
         if self.include_level:
             log_data["level"] = record.levelname
-        
+
         if self.include_logger:
             log_data["logger"] = record.name
-        
+
         # Message
         log_data["message"] = record.getMessage()
-        
+
         # Location info (optional, useful for debugging)
         if self.include_location:
             log_data["location"] = {
@@ -81,11 +83,11 @@ class JSONFormatter(logging.Formatter):
                 "line": record.lineno,
                 "function": record.funcName,
             }
-        
+
         # Include exception info if present
         if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)
-        
+
         # Include extra fields from record
         # These are added via logger.info("msg", extra={...})
         extra_fields = {
@@ -101,7 +103,7 @@ class JSONFormatter(logging.Formatter):
         }
         if extra_fields:
             log_data["context"] = extra_fields
-        
+
         return json.dumps(log_data, default=str)
 
 
@@ -110,14 +112,14 @@ class TextFormatter(logging.Formatter):
     
     Produces human-readable log entries for development/debugging.
     """
-    
+
     DEFAULT_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
     DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-    
+
     def __init__(
         self,
-        fmt: Optional[str] = None,
-        datefmt: Optional[str] = None,
+        fmt: str | None = None,
+        datefmt: str | None = None,
     ):
         """Initialize text formatter.
         
@@ -156,12 +158,12 @@ def _create_console_handler(
     """
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(level)
-    
+
     if use_json:
         handler.setFormatter(JSONFormatter())
     else:
         handler.setFormatter(TextFormatter())
-    
+
     return handler
 
 
@@ -185,7 +187,7 @@ def _create_file_handler(
     Requirements: 7.6 (configurable log levels)
     """
     _ensure_log_directory(log_path)
-    
+
     handler = logging.handlers.RotatingFileHandler(
         filename=log_path,
         maxBytes=max_bytes,
@@ -194,7 +196,7 @@ def _create_file_handler(
     )
     handler.setLevel(level)
     handler.setFormatter(JSONFormatter(include_location=True))
-    
+
     return handler
 
 
@@ -238,11 +240,11 @@ LOGGING_CONFIG = {
 
 def configure_logging(
     *,
-    level: Optional[str] = None,
-    log_format: Optional[str] = None,
-    file_path: Optional[str] = None,
-    max_file_size_mb: Optional[int] = None,
-    backup_count: Optional[int] = None,
+    level: str | None = None,
+    log_format: str | None = None,
+    file_path: str | None = None,
+    max_file_size_mb: int | None = None,
+    backup_count: int | None = None,
     console_json: bool = False,
 ) -> None:
     """Configure application logging using settings from config.
@@ -263,32 +265,32 @@ def configure_logging(
     """
     # Import here to avoid circular imports
     from app.config import get_settings
-    
+
     settings = get_settings()
     log_settings = settings.logging
-    
+
     # Resolve configuration values
     log_level_str = level or log_settings.level.value
     log_level = getattr(logging, log_level_str.upper(), logging.INFO)
-    
+
     log_file = file_path or log_settings.file_path
     max_bytes = (max_file_size_mb or log_settings.max_file_size_mb) * 1024 * 1024
     backups = backup_count or log_settings.backup_count
-    
+
     # Get root logger for the application
     root_logger = logging.getLogger("inec_agent")
     root_logger.setLevel(log_level)
-    
+
     # Clear existing handlers
     root_logger.handlers.clear()
-    
+
     # Add console handler
     console_handler = _create_console_handler(
         level=log_level,
         use_json=console_json or (log_format == "json"),
     )
     root_logger.addHandler(console_handler)
-    
+
     # Add file handler if path is configured
     if log_file:
         file_handler = _create_file_handler(
@@ -298,10 +300,10 @@ def configure_logging(
             backup_count=backups,
         )
         root_logger.addHandler(file_handler)
-    
+
     # Prevent propagation to root logger
     root_logger.propagate = False
-    
+
     # Log configuration complete
     root_logger.info(
         "Logging configured",

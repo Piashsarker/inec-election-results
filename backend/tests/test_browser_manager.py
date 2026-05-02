@@ -4,7 +4,7 @@ Requirements tested: 1.7, 6.5, 7.3
 """
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 

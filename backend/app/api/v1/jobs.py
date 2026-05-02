@@ -4,8 +4,9 @@ Provides endpoints for managing scraping jobs.
 
 Requirements: 6.1, 6.2, 6.3, 6.6
 """
+from __future__ import annotations
 
-from typing import List, Optional
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -21,20 +22,20 @@ router = APIRouter()
 
 class CreateJobRequest(BaseModel):
     """Request to create a scraping job."""
-    election_type: Optional[str] = None
-    target_state: Optional[str] = None
-    target_lga: Optional[str] = None
-    target_ward: Optional[str] = None
+    election_type: str | None = None
+    target_state: str | None = None
+    target_lga: str | None = None
+    target_ward: str | None = None
 
 
 class JobResponse(BaseModel):
     """Scraping job response schema."""
     id: UUID
     status: str
-    election_type: Optional[str]
-    target_state: Optional[str]
-    target_lga: Optional[str]
-    target_ward: Optional[str]
+    election_type: str | None
+    target_state: str | None
+    target_lga: str | None
+    target_ward: str | None
     total_polling_units: int
     processed_count: int
     success_count: int
@@ -67,10 +68,10 @@ async def start_scraping_job(
     session.add(job)
     await session.commit()
     await session.refresh(job)
-    
+
     # In production, this would trigger a Celery task
     # celery_app.send_task('scrape_job', args=[str(job.id)])
-    
+
     return JobResponse.model_validate(job)
 
 
@@ -91,10 +92,10 @@ async def get_job_status(
         select(ScrapingJob).where(ScrapingJob.id == job_id)
     )
     job = result.scalar_one_or_none()
-    
+
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    
+
     return JobResponse.model_validate(job)
 
 
@@ -115,17 +116,17 @@ async def pause_job(
         select(ScrapingJob).where(ScrapingJob.id == job_id)
     )
     job = result.scalar_one_or_none()
-    
+
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    
+
     if job.status != "running":
         raise HTTPException(status_code=400, detail="Job is not running")
-    
+
     job.status = "paused"
     await session.commit()
     await session.refresh(job)
-    
+
     return JobResponse.model_validate(job)
 
 
@@ -146,17 +147,17 @@ async def resume_job(
         select(ScrapingJob).where(ScrapingJob.id == job_id)
     )
     job = result.scalar_one_or_none()
-    
+
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    
+
     if job.status != "paused":
         raise HTTPException(status_code=400, detail="Job is not paused")
-    
+
     job.status = "running"
     await session.commit()
     await session.refresh(job)
-    
+
     return JobResponse.model_validate(job)
 
 
@@ -177,15 +178,15 @@ async def cancel_job(
         select(ScrapingJob).where(ScrapingJob.id == job_id)
     )
     job = result.scalar_one_or_none()
-    
+
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    
+
     if job.status in ("completed", "cancelled", "failed"):
         raise HTTPException(status_code=400, detail=f"Job is already {job.status}")
-    
+
     job.status = "cancelled"
     await session.commit()
     await session.refresh(job)
-    
+
     return JobResponse.model_validate(job)

@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -53,19 +53,19 @@ class ScrapingJob(BaseModel):
         default="queued",
         index=True,
     )
-    election_type: Mapped[Optional[str]] = mapped_column(
+    election_type: Mapped[str | None] = mapped_column(
         String(50),
         nullable=True,
     )
-    target_state: Mapped[Optional[str]] = mapped_column(
+    target_state: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
     )
-    target_lga: Mapped[Optional[str]] = mapped_column(
+    target_lga: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
     )
-    target_ward: Mapped[Optional[str]] = mapped_column(
+    target_ward: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
     )
@@ -89,25 +89,25 @@ class ScrapingJob(BaseModel):
         default=0,
         nullable=False,
     )
-    last_processed_pu: Mapped[Optional[str]] = mapped_column(
+    last_processed_pu: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
     )
-    checkpoint_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+    checkpoint_data: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
     )
-    started_at: Mapped[Optional[datetime]] = mapped_column(
+    started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
-    completed_at: Mapped[Optional[datetime]] = mapped_column(
+    completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
 
     # Relationships
-    logs: Mapped[List["JobLog"]] = relationship(
+    logs: Mapped[list[JobLog]] = relationship(
         "JobLog",
         back_populates="job",
         cascade="all, delete-orphan",
@@ -149,14 +149,14 @@ class JobLog(BaseModel):
         Text,
         nullable=False,
     )
-    log_metadata: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+    log_metadata: Mapped[dict[str, Any] | None] = mapped_column(
         "metadata",  # Keep the database column name as 'metadata'
         JSONB,
         nullable=True,
     )
 
     # Relationships
-    job: Mapped["ScrapingJob"] = relationship(
+    job: Mapped[ScrapingJob] = relationship(
         "ScrapingJob",
         back_populates="logs",
     )
@@ -201,17 +201,17 @@ class FlaggedResult(BaseModel):
         nullable=False,
         index=True,
     )
-    review_notes: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+    review_notes: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
     )
-    reviewed_at: Mapped[Optional[datetime]] = mapped_column(
+    reviewed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
 
     # Relationships
-    election_result: Mapped["ElectionResult"] = relationship(
+    election_result: Mapped[ElectionResult] = relationship(
         "ElectionResult",
         back_populates="flagged_results",
     )

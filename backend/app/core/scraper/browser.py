@@ -8,12 +8,13 @@ This module provides a managed Playwright browser instance with:
 
 Requirements: 1.7, 6.5, 7.3
 """
+from __future__ import annotations
+
 
 import asyncio
 import logging
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Optional
 
 from playwright.async_api import (
     Browser,
@@ -42,7 +43,7 @@ class NetworkError(Exception):
 class MaxRetriesExceeded(Exception):
     """Raised when maximum retry attempts have been exhausted."""
 
-    def __init__(self, url: str, max_retries: int, last_error: Optional[str] = None):
+    def __init__(self, url: str, max_retries: int, last_error: str | None = None):
         self.url = url
         self.max_retries = max_retries
         self.last_error = last_error
@@ -117,9 +118,9 @@ class BrowserManager:
         self._request_lock = asyncio.Lock()
 
         # Playwright resources
-        self._playwright: Optional[Playwright] = None
-        self._browser: Optional[Browser] = None
-        self._context: Optional[BrowserContext] = None
+        self._playwright: Playwright | None = None
+        self._browser: Browser | None = None
+        self._context: BrowserContext | None = None
 
         logger.info(
             "BrowserManager initialized",
@@ -237,7 +238,7 @@ class BrowserManager:
         if not self._context:
             raise RuntimeError("Browser not started. Call start() or use context manager.")
 
-        page: Optional[Page] = None
+        page: Page | None = None
         try:
             page = await self._context.new_page()
             page.set_default_timeout(self.timeout)
@@ -284,7 +285,7 @@ class BrowserManager:
         Raises:
             MaxRetriesExceeded: If all retry attempts fail
         """
-        last_error: Optional[str] = None
+        last_error: str | None = None
 
         for attempt in range(self.max_retries):
             try:

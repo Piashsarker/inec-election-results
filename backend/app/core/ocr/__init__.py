@@ -1,5 +1,10 @@
 """OCR and image processing components."""
 
+from app.core.ocr.engine import (
+    OCREngine,
+    OCROrchestrationResult,
+    OCROrchestrator,
+)
 from app.core.ocr.preprocessing import (
     ImageFormat,
     ImagePreprocessor,
@@ -15,13 +20,10 @@ from app.core.ocr.tesseract import (
 )
 from app.core.ocr.vision import (
     ExtractionResult as VisionExtractionResult,
+)
+from app.core.ocr.vision import (
     GPT4VisionEngine,
     PartyVoteResult,
-)
-from app.core.ocr.engine import (
-    OCREngine,
-    OCROrchestrationResult,
-    OCROrchestrator,
 )
 
 __all__ = [
