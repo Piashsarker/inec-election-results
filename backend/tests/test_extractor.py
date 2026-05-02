@@ -160,12 +160,12 @@ class TestElectionDataExtractor:
         WARD: Test Ward
         LGA: Test LGA
         STATE: Test State
-        
+
         APC: 150
         PDP: 120
         LP: 80
         NNPP: 30
-        
+
         Accredited Voters: 400
         Valid Votes: 380
         Rejected Votes: 10

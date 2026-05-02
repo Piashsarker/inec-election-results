@@ -8,7 +8,6 @@ Requirements: 3.1
 """
 from __future__ import annotations
 
-
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -25,7 +24,7 @@ except ImportError:
 @dataclass
 class TextBlock:
     """A block of text extracted from an image.
-    
+
     Attributes:
         text: The extracted text content
         confidence: Confidence score (0-100)
@@ -54,7 +53,7 @@ class TextBlock:
 @dataclass
 class TableCell:
     """A cell in an extracted table.
-    
+
     Attributes:
         text: Cell text content
         row: Row index (0-based)
@@ -79,7 +78,7 @@ class TableCell:
 @dataclass
 class Table:
     """An extracted table from the image.
-    
+
     Attributes:
         cells: List of table cells
         rows: Number of rows
@@ -117,7 +116,7 @@ class Table:
 @dataclass
 class OCRResult:
     """Result of OCR text extraction.
-    
+
     Attributes:
         text: Full extracted text
         blocks: List of text blocks with positions and confidence
@@ -150,11 +149,11 @@ class OCRResult:
 
 class TesseractEngine:
     """Tesseract OCR engine for high-quality printed documents.
-    
+
     This engine is optimized for clean, printed election result sheets.
     It provides text extraction with confidence scores and basic table
     detection capabilities.
-    
+
     Requirements: 3.1
     """
 
@@ -172,12 +171,12 @@ class TesseractEngine:
         tesseract_cmd: str | None = None,
     ):
         """Initialize Tesseract OCR engine.
-        
+
         Args:
             lang: Tesseract language code (e.g., 'eng', 'eng+fra')
             config: Tesseract configuration options
             tesseract_cmd: Path to tesseract executable (optional)
-            
+
         Raises:
             RuntimeError: If Tesseract is not available
         """
@@ -195,10 +194,10 @@ class TesseractEngine:
 
     def extract_text(self, image: np.ndarray | str | Path) -> OCRResult:
         """Extract text from image using Tesseract.
-        
+
         Args:
             image: Image as numpy array or path to image file
-            
+
         Returns:
             OCRResult with extracted text and confidence scores
         """
@@ -244,10 +243,10 @@ class TesseractEngine:
         image: np.ndarray | str | Path,
     ) -> OCRResult:
         """Extract text with bounding box information.
-        
+
         Args:
             image: Image as numpy array or path to image file
-            
+
         Returns:
             OCRResult with text blocks including position data
         """
@@ -260,15 +259,15 @@ class TesseractEngine:
         min_cols: int = 2,
     ) -> list[Table]:
         """Extract tabular data from result sheets.
-        
+
         Uses line detection and text positioning to identify
         table structures in the image.
-        
+
         Args:
             image: Image as numpy array or path to image file
             min_rows: Minimum rows to consider as table
             min_cols: Minimum columns to consider as table
-            
+
         Returns:
             List of extracted tables
         """
@@ -303,10 +302,10 @@ class TesseractEngine:
 
     def _parse_tesseract_output(self, data: dict) -> list[TextBlock]:
         """Parse Tesseract output dictionary into TextBlock objects.
-        
+
         Args:
             data: Tesseract output dictionary
-            
+
         Returns:
             List of TextBlock objects
         """
@@ -344,12 +343,12 @@ class TesseractEngine:
         min_length: int = 100,
     ) -> list[tuple]:
         """Detect horizontal or vertical lines in image.
-        
+
         Args:
             gray: Grayscale image
             horizontal: True for horizontal lines, False for vertical
             min_length: Minimum line length to detect
-            
+
         Returns:
             List of line coordinates (x1, y1, x2, y2)
         """
@@ -394,14 +393,14 @@ class TesseractEngine:
         min_cols: int,
     ) -> list[Table]:
         """Find table regions from detected lines.
-        
+
         Args:
             gray: Grayscale image
             horizontal_lines: List of horizontal line coordinates
             vertical_lines: List of vertical line coordinates
             min_rows: Minimum rows for valid table
             min_cols: Minimum columns for valid table
-            
+
         Returns:
             List of Table objects with cell positions
         """
@@ -459,11 +458,11 @@ class TesseractEngine:
         min_gap: int = 20,
     ) -> list[int]:
         """Filter out lines that are too close together.
-        
+
         Args:
             lines: Sorted list of line positions
             min_gap: Minimum gap between lines
-            
+
         Returns:
             Filtered list of line positions
         """
@@ -483,7 +482,7 @@ class TesseractEngine:
         table: Table,
     ) -> None:
         """Extract text for each cell in a table.
-        
+
         Args:
             image: Source image
             table: Table object with cell positions
@@ -530,7 +529,7 @@ class TesseractEngine:
 
     def get_supported_languages(self) -> list[str]:
         """Get list of supported Tesseract languages.
-        
+
         Returns:
             List of language codes
         """
@@ -542,7 +541,7 @@ class TesseractEngine:
 
     def is_available(self) -> bool:
         """Check if Tesseract is available and working.
-        
+
         Returns:
             True if Tesseract is available
         """

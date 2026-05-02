@@ -39,7 +39,7 @@ SAMPLE_RESULT_URLS = [
 
 async def download_sample_images(output_dir: Path, limit: int = 4) -> list[Path]:
     """Download sample result sheet images for demo.
-    
+
     Since INEC IREV requires browser navigation, we'll create sample images
     or use publicly available election result images.
     """

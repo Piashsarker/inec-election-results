@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import { ElectionType, ExportRequest, ExportResponse } from '@/types';
+import { ElectionType, ExportResponse } from '@/types';
 
 interface ExportCenterProps {
   onExportComplete?: (response: ExportResponse) => void;
@@ -52,7 +52,7 @@ export function ExportCenter({ onExportComplete }: ExportCenterProps) {
 
       setExportStatus(response);
       onExportComplete?.(response);
-    } catch (err) {
+    } catch {
       setError('Failed to start export. Please try again.');
       // Simulate success for development
       setExportStatus({
@@ -71,7 +71,7 @@ export function ExportCenter({ onExportComplete }: ExportCenterProps) {
     try {
       // In production, this would trigger a file download
       window.open(exportStatus.downloadUrl, '_blank');
-    } catch (err) {
+    } catch {
       setError('Failed to download file');
     }
   };

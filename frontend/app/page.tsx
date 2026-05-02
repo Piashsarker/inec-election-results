@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
 
 interface DashboardStats {
   totalResults: number;
@@ -132,8 +131,6 @@ export default function HomePage() {
     flaggedResults: 0,
     activeJobs: 0,
   });
-  const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     // In production, fetch real stats from API
     // For now, set placeholder values
@@ -144,7 +141,6 @@ export default function HomePage() {
       flaggedResults: 0,
       activeJobs: 0,
     });
-    setLoading(false);
   }, []);
 
   return (

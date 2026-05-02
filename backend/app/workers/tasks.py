@@ -7,7 +7,6 @@ Requirements: 6.3, 6.4, 8.1, 8.2
 """
 from __future__ import annotations
 
-
 import asyncio
 import csv
 import io
@@ -62,12 +61,12 @@ _async_session_factory = async_sessionmaker(
 
 def run_async(coro):
     """Run an async coroutine in a synchronous context.
-    
+
     Creates a new event loop if one doesn't exist.
-    
+
     Args:
         coro: The coroutine to run
-        
+
     Returns:
         The result of the coroutine
     """
@@ -193,12 +192,12 @@ def run_scraping_job(
     resume_from_checkpoint: bool = False,
 ) -> dict[str, Any]:
     """Run a scraping job with the orchestrator agent.
-    
+
     This task manages the scraping workflow, including:
     - Job state management (start, pause, resume, complete)
     - Progress tracking and checkpointing
     - Integration with the OrchestratorAgent
-    
+
     Args:
         job_id: UUID of the scraping job
         election_type: Target election type filter
@@ -206,10 +205,10 @@ def run_scraping_job(
         target_lga: Target LGA filter
         target_ward: Target ward filter
         resume_from_checkpoint: Whether to resume from a saved checkpoint
-        
+
     Returns:
         Dictionary with job summary
-        
+
     Requirements: 6.3, 6.4
     """
     logger.info(f"Starting scraping job {job_id}")
@@ -387,10 +386,10 @@ def generate_csv_export(
     include_metadata: bool = True,
 ) -> dict[str, Any]:
     """Generate a CSV export of election results.
-    
+
     This task queries election results based on filters and generates
     a CSV file with the aggregated data.
-    
+
     Args:
         export_id: Unique identifier for this export
         election_type_id: Filter by election type UUID
@@ -398,10 +397,10 @@ def generate_csv_export(
         lga_id: Filter by LGA UUID
         ward_id: Filter by ward UUID
         include_metadata: Whether to include metadata in export
-        
+
     Returns:
         Dictionary with export file path and record count
-        
+
     Requirements: 8.1, 8.3
     """
     logger.info(f"Starting CSV export {export_id}")
@@ -523,8 +522,13 @@ async def _async_generate_csv_export(
             ]
 
             if include_metadata:
+                extracted_at = (
+                    election_result.extracted_at.isoformat()
+                    if election_result.extracted_at
+                    else ""
+                )
                 row_data.extend([
-                    election_result.extracted_at.isoformat() if election_result.extracted_at else "",
+                    extracted_at,
                     election_result.source_image_path or "",
                 ])
 
@@ -578,10 +582,10 @@ def generate_json_export(
     aggregation_level: str | None = None,
 ) -> dict[str, Any]:
     """Generate a JSON export of election results.
-    
+
     This task queries election results based on filters and generates
     a JSON file with the data, optionally aggregated at ward/LGA level.
-    
+
     Args:
         export_id: Unique identifier for this export
         election_type_id: Filter by election type UUID
@@ -590,10 +594,10 @@ def generate_json_export(
         ward_id: Filter by ward UUID
         include_metadata: Whether to include metadata in export
         aggregation_level: Optional aggregation level ('ward', 'lga', 'state')
-        
+
     Returns:
         Dictionary with export file path and record count
-        
+
     Requirements: 8.2, 8.3, 8.4
     """
     logger.info(f"Starting JSON export {export_id}")
@@ -775,10 +779,20 @@ async def _generate_detailed_results(
         }
 
         if include_metadata:
+            extracted_at = (
+                election_result.extracted_at.isoformat()
+                if election_result.extracted_at
+                else None
+            )
+            created_at = (
+                election_result.created_at.isoformat()
+                if election_result.created_at
+                else None
+            )
             result_data["metadata"] = {
-                "extracted_at": election_result.extracted_at.isoformat() if election_result.extracted_at else None,
+                "extracted_at": extracted_at,
                 "source_image_path": election_result.source_image_path,
-                "created_at": election_result.created_at.isoformat() if election_result.created_at else None,
+                "created_at": created_at,
             }
 
         results.append(result_data)
@@ -904,13 +918,13 @@ def _aggregation_to_dict(agg_result) -> dict[str, Any]:
 )
 def pause_scraping_job(job_id: str) -> dict[str, Any]:
     """Pause a running scraping job.
-    
+
     Args:
         job_id: UUID of the job to pause
-        
+
     Returns:
         Dictionary with pause status
-        
+
     Requirements: 6.3
     """
     logger.info(f"Pausing job {job_id}")
@@ -949,13 +963,13 @@ async def _async_pause_job(job_id: str) -> dict[str, Any]:
 )
 def resume_scraping_job(job_id: str) -> dict[str, Any]:
     """Resume a paused scraping job.
-    
+
     Args:
         job_id: UUID of the job to resume
-        
+
     Returns:
         Dictionary with resume status
-        
+
     Requirements: 6.3, 6.4
     """
     logger.info(f"Resuming job {job_id}")
@@ -1007,13 +1021,13 @@ async def _async_resume_job(job_id: str) -> dict[str, Any]:
 )
 def cancel_scraping_job(job_id: str) -> dict[str, Any]:
     """Cancel a running or paused scraping job.
-    
+
     Args:
         job_id: UUID of the job to cancel
-        
+
     Returns:
         Dictionary with cancellation status
-        
+
     Requirements: 6.3
     """
     logger.info(f"Cancelling job {job_id}")
@@ -1031,8 +1045,16 @@ async def _async_cancel_job(job_id: str) -> dict[str, Any]:
         if not job:
             return {"success": False, "error": "Job not found"}
 
-        if job.status not in (JobStatus.RUNNING.value, JobStatus.PAUSED.value, JobStatus.QUEUED.value):
-            return {"success": False, "error": f"Job cannot be cancelled (status: {job.status})"}
+        cancelable = (
+            JobStatus.RUNNING.value,
+            JobStatus.PAUSED.value,
+            JobStatus.QUEUED.value,
+        )
+        if job.status not in cancelable:
+            return {
+                "success": False,
+                "error": f"Job cannot be cancelled (status: {job.status})",
+            }
 
         job.status = JobStatus.CANCELLED.value
         job.completed_at = datetime.utcnow()

@@ -35,10 +35,10 @@ async_session_factory = async_sessionmaker(
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """Dependency that provides an async database session.
-    
+
     Yields:
         AsyncSession: An async SQLAlchemy session
-        
+
     Example:
         @app.get("/items")
         async def get_items(session: AsyncSession = Depends(get_async_session)):

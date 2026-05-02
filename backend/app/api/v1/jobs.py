@@ -6,7 +6,6 @@ Requirements: 6.1, 6.2, 6.3, 6.6
 """
 from __future__ import annotations
 
-
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -51,10 +50,10 @@ async def start_scraping_job(
     session: AsyncSession = Depends(get_async_session),
 ) -> JobResponse:
     """Start a new scraping job.
-    
+
     Args:
         request: Job configuration with optional scope filters
-        
+
     Returns:
         Created job with ID for tracking
     """
@@ -81,10 +80,10 @@ async def get_job_status(
     session: AsyncSession = Depends(get_async_session),
 ) -> JobResponse:
     """Get status of a scraping job.
-    
+
     Args:
         job_id: Job UUID
-        
+
     Returns:
         Job status and progress
     """
@@ -105,10 +104,10 @@ async def pause_job(
     session: AsyncSession = Depends(get_async_session),
 ) -> JobResponse:
     """Pause a running scraping job.
-    
+
     Args:
         job_id: Job UUID
-        
+
     Returns:
         Updated job status
     """
@@ -136,10 +135,10 @@ async def resume_job(
     session: AsyncSession = Depends(get_async_session),
 ) -> JobResponse:
     """Resume a paused scraping job.
-    
+
     Args:
         job_id: Job UUID
-        
+
     Returns:
         Updated job status
     """
@@ -167,10 +166,10 @@ async def cancel_job(
     session: AsyncSession = Depends(get_async_session),
 ) -> JobResponse:
     """Cancel a scraping job.
-    
+
     Args:
         job_id: Job UUID
-        
+
     Returns:
         Updated job status
     """

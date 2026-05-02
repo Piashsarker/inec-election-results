@@ -84,16 +84,16 @@ async def get_ward_aggregation(
     session: AsyncSession = Depends(get_async_session),
 ) -> AggregationResponse:
     """Get aggregated election results for a ward.
-    
+
     Sums vote counts by party across all polling units in the specified ward.
-    
+
     Args:
         ward_id: Ward UUID
         election_type_id: Election type UUID
-        
+
     Returns:
         Aggregated results with party rankings and polling unit counts
-        
+
     Requirements: 5.1, 5.3, 5.4, 5.5, 5.6
     """
     service = AggregationService(session)
@@ -115,16 +115,16 @@ async def get_lga_aggregation(
     session: AsyncSession = Depends(get_async_session),
 ) -> AggregationResponse:
     """Get aggregated election results for an LGA.
-    
+
     Sums vote counts by party across all wards (and their polling units) in the LGA.
-    
+
     Args:
         lga_id: LGA UUID
         election_type_id: Election type UUID
-        
+
     Returns:
         Aggregated results with party rankings and polling unit counts
-        
+
     Requirements: 5.2, 5.3, 5.4, 5.5, 5.6
     """
     service = AggregationService(session)
@@ -146,16 +146,16 @@ async def get_state_aggregation(
     session: AsyncSession = Depends(get_async_session),
 ) -> AggregationResponse:
     """Get aggregated election results for a state.
-    
+
     Sums vote counts by party across all LGAs (and their wards/polling units) in the state.
-    
+
     Args:
         state_id: State UUID
         election_type_id: Election type UUID
-        
+
     Returns:
         Aggregated results with party rankings and polling unit counts
-        
+
     Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
     """
     service = AggregationService(session)

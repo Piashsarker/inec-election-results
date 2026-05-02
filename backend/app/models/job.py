@@ -23,9 +23,9 @@ if TYPE_CHECKING:
 
 class ScrapingJob(BaseModel):
     """Model representing a scraping job.
-    
+
     Tracks scraping job state for pause/resume functionality and progress monitoring.
-    
+
     Attributes:
         id: UUID primary key
         status: Job status (queued, running, paused, completed, failed, cancelled)
@@ -115,14 +115,17 @@ class ScrapingJob(BaseModel):
     )
 
     def __repr__(self) -> str:
-        return f"<ScrapingJob(id={self.id}, status='{self.status}', processed={self.processed_count}/{self.total_polling_units})>"
+        return (
+            f"<ScrapingJob(id={self.id}, status='{self.status}', "
+            f"processed={self.processed_count}/{self.total_polling_units})>"
+        )
 
 
 class JobLog(BaseModel):
     """Model representing a log entry for a scraping job.
-    
+
     Stores log messages with severity levels and optional metadata.
-    
+
     Attributes:
         id: UUID primary key
         job_id: Foreign key to scraping job
@@ -169,9 +172,9 @@ class JobLog(BaseModel):
 
 class FlaggedResult(BaseModel):
     """Model representing a flagged election result for manual review.
-    
+
     Stores information about results that failed validation or need manual review.
-    
+
     Attributes:
         id: UUID primary key
         election_result_id: Foreign key to election result
@@ -222,4 +225,8 @@ class FlaggedResult(BaseModel):
     )
 
     def __repr__(self) -> str:
-        return f"<FlaggedResult(id={self.id}, election_result_id={self.election_result_id}, status='{self.status}')>"
+        return (
+            f"<FlaggedResult(id={self.id}, "
+            f"election_result_id={self.election_result_id}, "
+            f"status='{self.status}')>"
+        )

@@ -9,12 +9,6 @@ interface PageProps {
   params: { type: string; state: string };
 }
 
-// Sample LGA data structure
-interface DrillDownLevel {
-  type: 'lga' | 'ward' | 'polling_unit';
-  items: (LGA | Ward | PollingUnit)[];
-}
-
 function formatElectionType(type: string): string {
   return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
@@ -126,7 +120,7 @@ export default function StatePage({ params }: PageProps) {
       try {
         const data = await api.getLgas(params.type, params.state);
         setItems(data as LGA[]);
-      } catch (error) {
+      } catch {
         // Use sample data if API fails
         setItems([
           { id: '1', stateId: '1', name: 'Sample LGA 1', code: 'LGA1', totalWards: 10 },
@@ -147,7 +141,7 @@ export default function StatePage({ params }: PageProps) {
     try {
       const data = await api.getWards(params.type, params.state, lga.code);
       setItems(data as Ward[]);
-    } catch (error) {
+    } catch {
       setItems([
         { id: '1', lgaId: lga.id, name: 'Sample Ward 1', code: 'W1', totalPollingUnits: 15 },
         { id: '2', lgaId: lga.id, name: 'Sample Ward 2', code: 'W2', totalPollingUnits: 20 },
@@ -169,7 +163,7 @@ export default function StatePage({ params }: PageProps) {
         ward.code
       );
       setItems(data as PollingUnit[]);
-    } catch (error) {
+    } catch {
       setItems([
         { id: '1', wardId: ward.id, name: 'Polling Unit 001', code: 'PU001' },
         { id: '2', wardId: ward.id, name: 'Polling Unit 002', code: 'PU002' },
@@ -187,7 +181,7 @@ export default function StatePage({ params }: PageProps) {
       if (data && (data as { data: { partyResults: PartyResult[] }[] }).data?.[0]) {
         setResults((data as { data: { partyResults: PartyResult[] }[] }).data[0].partyResults);
       }
-    } catch (error) {
+    } catch {
       // Sample results
       setResults([
         { partyName: 'All Progressives Congress', partyCode: 'APC', voteCount: 245, percentage: 45.2 },

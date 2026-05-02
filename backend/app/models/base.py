@@ -41,7 +41,7 @@ class UUIDPrimaryKeyMixin:
 
 class BaseModel(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     """Abstract base model with UUID primary key and timestamp.
-    
+
     All models should inherit from this class to get:
     - UUID primary key (id)
     - Created timestamp (created_at)

@@ -148,7 +148,7 @@ export function JobMonitor({ jobId, onJobComplete, refreshInterval = 5000 }: Job
       if (jobData.status === 'completed' || jobData.status === 'failed' || jobData.status === 'cancelled') {
         onJobComplete?.(jobData);
       }
-    } catch (err) {
+    } catch {
       setError('Failed to fetch job status');
       // Use sample data for development
       setJob({
@@ -186,7 +186,7 @@ export function JobMonitor({ jobId, onJobComplete, refreshInterval = 5000 }: Job
     try {
       await api.pauseJob(jobId);
       fetchJobStatus();
-    } catch (err) {
+    } catch {
       setError('Failed to pause job');
     }
   };
@@ -196,7 +196,7 @@ export function JobMonitor({ jobId, onJobComplete, refreshInterval = 5000 }: Job
     try {
       await api.resumeJob(jobId);
       fetchJobStatus();
-    } catch (err) {
+    } catch {
       setError('Failed to resume job');
     }
   };
@@ -207,7 +207,7 @@ export function JobMonitor({ jobId, onJobComplete, refreshInterval = 5000 }: Job
     try {
       await api.cancelJob(jobId);
       fetchJobStatus();
-    } catch (err) {
+    } catch {
       setError('Failed to cancel job');
     }
   };

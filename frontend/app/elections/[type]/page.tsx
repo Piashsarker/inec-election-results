@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
+import { useState } from 'react';
 import { State } from '@/types';
 
 interface PageProps {
@@ -74,11 +73,9 @@ function formatElectionType(type: string): string {
 }
 
 export default function ElectionTypePage({ params }: PageProps) {
-  const [states, setStates] = useState<State[]>(nigerianStates);
-  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredStates = states.filter((state) =>
+  const filteredStates = nigerianStates.filter((state) =>
     state.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -120,7 +117,7 @@ export default function ElectionTypePage({ params }: PageProps) {
 
       {filteredStates.length === 0 && (
         <p className="text-center text-muted-foreground py-8">
-          No states found matching "{searchTerm}"
+          No states found matching &quot;{searchTerm}&quot;
         </p>
       )}
     </main>

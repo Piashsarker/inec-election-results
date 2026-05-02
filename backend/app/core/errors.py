@@ -10,14 +10,13 @@ Requirements: 7.2, 7.3, 7.5
 """
 from __future__ import annotations
 
-
 import asyncio
 import uuid
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any, TypeVar
 
 from app.core.logging import get_logger
@@ -27,9 +26,9 @@ logger = get_logger(__name__)
 T = TypeVar("T")
 
 
-class ErrorCategory(str, Enum):
+class ErrorCategory(StrEnum):
     """Error categories for classification and handling.
-    
+
     Requirement 7.2: Categorize errors as network, parsing, or validation errors.
     """
 
@@ -43,7 +42,7 @@ class ErrorCategory(str, Enum):
     UNKNOWN = "unknown"
 
 
-class ErrorSeverity(str, Enum):
+class ErrorSeverity(StrEnum):
     """Error severity levels for prioritization."""
 
     LOW = "low"
@@ -69,7 +68,7 @@ class INECAgentError(Exception):
         cause: Exception | None = None,
     ):
         """Initialize error with message and context.
-        
+
         Args:
             message: Human-readable error message
             context: Additional context data for debugging
@@ -79,7 +78,7 @@ class INECAgentError(Exception):
         self.message = message
         self.context = context or {}
         self.cause = cause
-        self.timestamp = datetime.now(timezone.utc)
+        self.timestamp = datetime.now(UTC)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert error to dictionary for logging/serialization."""
@@ -99,7 +98,7 @@ class INECAgentError(Exception):
 
 class NetworkError(INECAgentError):
     """Network-related errors (connection, timeout, DNS).
-    
+
     These errors are typically retryable with exponential backoff.
     """
 
@@ -317,7 +316,7 @@ class MaxRetriesExceededError(INECAgentError):
 @dataclass
 class FailedItem:
     """Represents a failed processing item for retry/review.
-    
+
     Requirement 7.5: Store failed items in a separate queue for manual review or retry.
     """
 
@@ -327,7 +326,7 @@ class FailedItem:
     error: INECAgentError = field(default_factory=lambda: INECAgentError("Unknown error"))
     retry_count: int = 0
     max_retries: int = 3
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     last_retry_at: datetime | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -359,17 +358,17 @@ class FailedItem:
 
 class FailedItemsQueue:
     """Queue for managing failed items for retry/review.
-    
+
     Provides thread-safe operations for adding, retrieving, and managing
     failed items. Items can be filtered by category, retried, or marked
     for manual review.
-    
+
     Requirement 7.5: Store failed items in a separate queue for manual review or retry.
     """
 
     def __init__(self, max_size: int = 10000):
         """Initialize failed items queue.
-        
+
         Args:
             max_size: Maximum number of items to store
         """
@@ -389,14 +388,14 @@ class FailedItemsQueue:
         metadata: dict[str, Any] | None = None,
     ) -> FailedItem:
         """Add a failed item to the queue.
-        
+
         Args:
             item_type: Type of item (e.g., "polling_unit")
             item_id: Identifier of the failed item
             error: The error that occurred
             max_retries: Maximum retry attempts
             metadata: Additional metadata
-            
+
         Returns:
             Created FailedItem instance
         """
@@ -428,7 +427,7 @@ class FailedItemsQueue:
 
     async def get_retryable(self) -> list[FailedItem]:
         """Get all items that can be retried.
-        
+
         Returns:
             List of retryable failed items
         """
@@ -437,10 +436,10 @@ class FailedItemsQueue:
 
     async def get_by_category(self, category: ErrorCategory) -> list[FailedItem]:
         """Get failed items by error category.
-        
+
         Args:
             category: Error category to filter by
-            
+
         Returns:
             List of failed items in the category
         """
@@ -449,7 +448,7 @@ class FailedItemsQueue:
 
     async def get_for_review(self) -> list[FailedItem]:
         """Get items that need manual review (not retryable or max retries exceeded).
-        
+
         Returns:
             List of items needing manual review
         """
@@ -458,10 +457,10 @@ class FailedItemsQueue:
 
     async def mark_retried(self, item_id: str) -> FailedItem | None:
         """Mark an item as retried, incrementing retry count.
-        
+
         Args:
             item_id: ID of the failed item
-            
+
         Returns:
             Updated FailedItem or None if not found
         """
@@ -469,16 +468,16 @@ class FailedItemsQueue:
             for item in self._queue:
                 if item.id == item_id:
                     item.retry_count += 1
-                    item.last_retry_at = datetime.now(timezone.utc)
+                    item.last_retry_at = datetime.now(UTC)
                     return item
         return None
 
     async def remove(self, item_id: str) -> FailedItem | None:
         """Remove an item from the queue (e.g., after successful retry).
-        
+
         Args:
             item_id: ID of the failed item to remove
-            
+
         Returns:
             Removed FailedItem or None if not found
         """
@@ -496,7 +495,7 @@ class FailedItemsQueue:
 
     async def clear(self) -> int:
         """Clear all items from the queue.
-        
+
         Returns:
             Number of items cleared
         """
@@ -509,7 +508,7 @@ class FailedItemsQueue:
 
     async def get_stats(self) -> dict[str, Any]:
         """Get queue statistics.
-        
+
         Returns:
             Dictionary with queue statistics
         """
@@ -534,7 +533,7 @@ class FailedItemsQueue:
 
     async def to_list(self) -> list[dict[str, Any]]:
         """Convert all items to list of dictionaries.
-        
+
         Returns:
             List of failed items as dictionaries
         """
@@ -548,7 +547,7 @@ _failed_items_queue: FailedItemsQueue | None = None
 
 def get_failed_items_queue() -> FailedItemsQueue:
     """Get the global failed items queue instance.
-    
+
     Returns:
         FailedItemsQueue singleton instance
     """
@@ -562,13 +561,13 @@ def get_failed_items_queue() -> FailedItemsQueue:
 
 def categorize_error(error: Exception) -> ErrorCategory:
     """Categorize an exception into an error category.
-    
+
     Args:
         error: Exception to categorize
-        
+
     Returns:
         Appropriate ErrorCategory
-        
+
     Requirement 7.2: Categorize errors as network, parsing, or validation errors.
     """
     if isinstance(error, INECAgentError):
@@ -622,17 +621,17 @@ def with_retry(
     retryable_exceptions: tuple[type[Exception], ...] = (NetworkError, DatabaseError),
 ):
     """Decorator for retry with exponential backoff.
-    
+
     Args:
         max_retries: Maximum number of retry attempts
         backoff_factor: Multiplier for delay between retries
         initial_delay: Initial delay in seconds
         max_delay: Maximum delay between retries
         retryable_exceptions: Tuple of exception types to retry
-        
+
     Returns:
         Decorated function with retry logic
-        
+
     Requirement 7.3: Implement retry logic with exponential backoff.
     """
     def decorator(func: Callable[..., T]) -> Callable[..., T]:

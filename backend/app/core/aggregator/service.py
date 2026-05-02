@@ -23,7 +23,7 @@ from app.models.job import FlaggedResult
 @dataclass
 class PartyAggregation:
     """Aggregated vote data for a single party.
-    
+
     Attributes:
         party_id: UUID of the political party
         party_name: Full name of the party
@@ -43,7 +43,7 @@ class PartyAggregation:
 @dataclass
 class AggregationResult:
     """Result of vote aggregation at a geographic level.
-    
+
     Attributes:
         level: Geographic level ('ward', 'lga', 'state')
         location_id: UUID of the geographic location
@@ -74,11 +74,11 @@ class AggregationResult:
 
 class AggregationService:
     """Service for aggregating election results at different geographic levels.
-    
+
     This service queries election results from the database, groups them by
     geographic level (ward, LGA, state), sums party votes, calculates percentages,
     ranks parties by vote count, and tracks polling unit counts and flagged results.
-    
+
     Requirements:
         - 5.1: Ward-level aggregation (sum votes from polling units in a ward)
         - 5.2: LGA-level aggregation (sum votes from wards in an LGA)
@@ -90,7 +90,7 @@ class AggregationService:
 
     def __init__(self, session: AsyncSession):
         """Initialize the aggregation service.
-        
+
         Args:
             session: Async SQLAlchemy database session
         """
@@ -102,16 +102,16 @@ class AggregationService:
         election_type_id: uuid.UUID,
     ) -> AggregationResult | None:
         """Aggregate election results at ward level.
-        
+
         Sums vote counts by party across all polling units in the specified ward.
-        
+
         Args:
             ward_id: UUID of the ward to aggregate
             election_type_id: UUID of the election type
-            
+
         Returns:
             AggregationResult with ward-level aggregation, or None if ward not found
-            
+
         Requirements: 5.1, 5.3, 5.4, 5.5, 5.6
         """
         # Get ward details
@@ -151,16 +151,16 @@ class AggregationService:
         election_type_id: uuid.UUID,
     ) -> AggregationResult | None:
         """Aggregate election results at LGA level.
-        
+
         Sums vote counts by party across all wards (and their polling units) in the LGA.
-        
+
         Args:
             lga_id: UUID of the LGA to aggregate
             election_type_id: UUID of the election type
-            
+
         Returns:
             AggregationResult with LGA-level aggregation, or None if LGA not found
-            
+
         Requirements: 5.2, 5.3, 5.4, 5.5, 5.6
         """
         # Get LGA details
@@ -212,16 +212,16 @@ class AggregationService:
         election_type_id: uuid.UUID,
     ) -> AggregationResult | None:
         """Aggregate election results at state level.
-        
+
         Sums vote counts by party across all LGAs (and their wards/polling units) in the state.
-        
+
         Args:
             state_id: UUID of the state to aggregate
             election_type_id: UUID of the election type
-            
+
         Returns:
             AggregationResult with state-level aggregation, or None if state not found
-            
+
         Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
         """
         # Get state details
@@ -280,9 +280,9 @@ class AggregationService:
         total_polling_units: int,
     ) -> AggregationResult:
         """Aggregate results for a list of polling units.
-        
+
         This is the core aggregation logic used by ward, LGA, and state aggregation.
-        
+
         Args:
             level: Geographic level ('ward', 'lga', 'state')
             location_id: UUID of the geographic location
@@ -291,7 +291,7 @@ class AggregationService:
             election_type_code: Code of the election type
             polling_unit_ids: List of polling unit UUIDs to aggregate
             total_polling_units: Total number of polling units in the area
-            
+
         Returns:
             AggregationResult with aggregated data
         """
@@ -355,14 +355,14 @@ class AggregationService:
         total_valid_votes: int,
     ) -> list[PartyAggregation]:
         """Aggregate votes by party and calculate percentages and rankings.
-        
+
         Args:
             election_result_ids: List of election result UUIDs to aggregate
             total_valid_votes: Total valid votes for percentage calculation
-            
+
         Returns:
             List of PartyAggregation sorted by vote count (descending)
-            
+
         Requirements: 5.3, 5.4
         """
         if not election_result_ids:
@@ -416,13 +416,13 @@ class AggregationService:
         election_result_ids: list[uuid.UUID],
     ) -> int:
         """Count the number of flagged results.
-        
+
         Args:
             election_result_ids: List of election result UUIDs to check
-            
+
         Returns:
             Number of flagged results
-            
+
         Requirements: 5.6
         """
         if not election_result_ids:
@@ -438,14 +438,14 @@ class AggregationService:
     @staticmethod
     def calculate_percentage(votes: int, total_votes: int) -> Decimal:
         """Calculate vote percentage.
-        
+
         Args:
             votes: Number of votes for a party
             total_votes: Total valid votes
-            
+
         Returns:
             Percentage as Decimal with 2 decimal places
-            
+
         Requirements: 5.3
         """
         if total_votes <= 0:
@@ -455,13 +455,13 @@ class AggregationService:
     @staticmethod
     def rank_parties(party_results: list[PartyAggregation]) -> list[PartyAggregation]:
         """Rank parties by vote count in descending order.
-        
+
         Args:
             party_results: List of party aggregations to rank
-            
+
         Returns:
             List of party aggregations with rank field updated
-            
+
         Requirements: 5.4
         """
         # Sort by total_votes descending

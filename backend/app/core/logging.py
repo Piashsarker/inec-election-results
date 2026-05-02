@@ -7,26 +7,25 @@ Requirements: 7.1, 7.2, 7.6
 """
 from __future__ import annotations
 
-
 import json
 import logging
 import logging.handlers
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 
 class JSONFormatter(logging.Formatter):
     """JSON formatter for structured logging.
-    
+
     Produces log entries with consistent structure including:
     - timestamp (ISO 8601 format)
     - level (log level name)
     - logger (logger name)
     - message (log message)
     - Additional context fields from extra dict
-    
+
     Requirements: 7.1 (log all operations with timestamps, operation type, status)
     """
 
@@ -39,7 +38,7 @@ class JSONFormatter(logging.Formatter):
         include_location: bool = False,
     ):
         """Initialize JSON formatter.
-        
+
         Args:
             include_timestamp: Include ISO timestamp in output
             include_level: Include log level in output
@@ -54,10 +53,10 @@ class JSONFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON string.
-        
+
         Args:
             record: Log record to format
-            
+
         Returns:
             JSON-formatted log string
         """
@@ -65,7 +64,7 @@ class JSONFormatter(logging.Formatter):
 
         # Core fields (Requirement 7.1: timestamp, operation type, status)
         if self.include_timestamp:
-            log_data["timestamp"] = datetime.now(timezone.utc).isoformat()
+            log_data["timestamp"] = datetime.now(UTC).isoformat()
 
         if self.include_level:
             log_data["level"] = record.levelname
@@ -109,7 +108,7 @@ class JSONFormatter(logging.Formatter):
 
 class TextFormatter(logging.Formatter):
     """Standard text formatter for console output.
-    
+
     Produces human-readable log entries for development/debugging.
     """
 
@@ -122,7 +121,7 @@ class TextFormatter(logging.Formatter):
         datefmt: str | None = None,
     ):
         """Initialize text formatter.
-        
+
         Args:
             fmt: Log format string
             datefmt: Date format string
@@ -135,7 +134,7 @@ class TextFormatter(logging.Formatter):
 
 def _ensure_log_directory(log_path: str) -> None:
     """Ensure the log directory exists.
-    
+
     Args:
         log_path: Path to log file
     """
@@ -148,11 +147,11 @@ def _create_console_handler(
     use_json: bool = False,
 ) -> logging.StreamHandler:
     """Create console handler with appropriate formatter.
-    
+
     Args:
         level: Logging level
         use_json: Use JSON format for console output
-        
+
     Returns:
         Configured console handler
     """
@@ -174,16 +173,16 @@ def _create_file_handler(
     backup_count: int,
 ) -> logging.handlers.RotatingFileHandler:
     """Create rotating file handler with JSON formatter.
-    
+
     Args:
         log_path: Path to log file
         level: Logging level
         max_bytes: Maximum file size before rotation
         backup_count: Number of backup files to keep
-        
+
     Returns:
         Configured rotating file handler
-        
+
     Requirements: 7.6 (configurable log levels)
     """
     _ensure_log_directory(log_path)
@@ -248,11 +247,11 @@ def configure_logging(
     console_json: bool = False,
 ) -> None:
     """Configure application logging using settings from config.
-    
+
     Sets up both console and file handlers with appropriate formatters.
     Console uses text format by default for readability, file uses JSON
     for structured logging and analysis.
-    
+
     Args:
         level: Override log level (DEBUG, INFO, WARNING, ERROR)
         log_format: Override log format (json or text)
@@ -260,7 +259,7 @@ def configure_logging(
         max_file_size_mb: Override max file size in MB
         backup_count: Override backup file count
         console_json: Use JSON format for console output
-        
+
     Requirements: 7.1, 7.6
     """
     # Import here to avoid circular imports
@@ -318,16 +317,16 @@ def configure_logging(
 
 def get_logger(name: str) -> logging.Logger:
     """Get a logger instance for the specified module.
-    
+
     Creates a child logger under the 'inec_agent' namespace to ensure
     consistent configuration and formatting.
-    
+
     Args:
         name: Logger name (typically __name__ of the calling module)
-        
+
     Returns:
         Configured logger instance
-        
+
     Example:
         >>> logger = get_logger(__name__)
         >>> logger.info("Processing started", extra={"job_id": "123"})

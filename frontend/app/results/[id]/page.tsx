@@ -72,7 +72,7 @@ export default function ResultDetailPage({ params }: PageProps) {
       try {
         const data = await api.getResult(params.id);
         setResult(data as ElectionResult);
-      } catch (error) {
+      } catch {
         // Sample data for development
         setResult({
           id: params.id,
@@ -111,7 +111,7 @@ export default function ResultDetailPage({ params }: PageProps) {
       setShowFlagModal(false);
       setFlagReason('');
       alert('Result flagged for review');
-    } catch (error) {
+    } catch {
       alert('Failed to flag result');
     } finally {
       setFlagging(false);
