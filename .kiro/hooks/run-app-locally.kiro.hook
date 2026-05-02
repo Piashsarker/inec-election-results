@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Run App Locally",
+  "description": "Starts the full local development stack for testing: Docker infrastructure (PostgreSQL + Redis), backend FastAPI server on port 8000, and frontend Next.js dev server on port 3000.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Start the full application stack locally for testing. Do these steps in order:\n\n1. Start infrastructure services (PostgreSQL + Redis) by running: `docker compose up -d` in the workspace root. Wait for containers to be healthy.\n\n2. Start the backend FastAPI server using controlBashProcess with action \"start\": command `source .venv/bin/activate && uvicorn app.main:app --reload --port 8000` in the `backend/` directory.\n\n3. Start the frontend Next.js dev server using controlBashProcess with action \"start\": command `npm run dev` in the `frontend/` directory.\n\n4. After both servers start, verify they are running by checking process output. Report the URLs:\n   - Backend API: http://localhost:8000\n   - API Docs: http://localhost:8000/docs\n   - Frontend: http://localhost:3000\n\n5. If any step fails, report the error and suggest fixes (e.g., missing dependencies, port conflicts)."
+  }
+}
