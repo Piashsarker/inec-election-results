@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Resolve Issue After PR Merge",
+  "description": "When manually triggered after a PR is merged to main, this hook prompts the agent to find the related GitHub issue from the most recent merge commit, add a closing comment, and close the issue.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A PR was just merged to main. Do the following:\n1. Run `git log --oneline -5` to find the most recent merge commit and identify the issue number from the commit message (look for #N pattern).\n2. Use the GitHub MCP tool (mcp_github_list_issues, owner: Piashsarker, repo: inec-election-results) to verify the issue exists and is open.\n3. Add a comment to the issue using mcp_github_add_issue_comment with body: \"Resolved via PR merge to main. Changes verified and deployed.\"\n4. Close the issue using mcp_github_update_issue with state: \"closed\".\n5. Report what was done."
+  }
+}
