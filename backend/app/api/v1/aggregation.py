@@ -77,6 +77,36 @@ def _convert_aggregation_result(agg_result) -> AggregationResponse:
     )
 
 
+@router.get("/election-type/{election_type_id}", response_model=AggregationResponse)
+async def get_election_type_aggregation(
+    election_type_id: UUID,
+    session: AsyncSession = Depends(get_async_session),
+) -> AggregationResponse:
+    """Get aggregated election results for an election type.
+
+    Sums vote counts by party across all polling units for the specified
+    election type, regardless of geographic location.
+
+    Args:
+        election_type_id: Election type UUID
+
+    Returns:
+        Aggregated results with party rankings and polling unit counts
+
+    Requirements: Issue #6
+    """
+    service = AggregationService(session)
+    result = await service.aggregate_election_type(election_type_id)
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Election type not found"
+        )
+
+    return _convert_aggregation_result(result)
+
+
 @router.get("/ward/{ward_id}", response_model=AggregationResponse)
 async def get_ward_aggregation(
     ward_id: UUID,

@@ -269,6 +269,83 @@ class AggregationService:
             total_polling_units=total_polling_units,
         )
 
+    async def aggregate_election_type(
+        self,
+        election_type_id: uuid.UUID,
+    ) -> AggregationResult | None:
+        """Aggregate election results at election-type level.
+
+        Sums vote counts by party across ALL polling units for the given election type,
+        regardless of geographic location.
+
+        Args:
+            election_type_id: UUID of the election type
+
+        Returns:
+            AggregationResult with election-type-level aggregation, or None if not found
+
+        Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
+        """
+        # Get election type details
+        election_type_query = select(ElectionType).where(
+            ElectionType.id == election_type_id
+        )
+        election_type_result = await self.session.execute(election_type_query)
+        election_type = election_type_result.scalar_one_or_none()
+
+        if election_type is None:
+            return None
+
+        # Get ALL election results for this election type (no geographic filter)
+        results_query = (
+            select(ElectionResult)
+            .where(ElectionResult.election_type_id == election_type_id)
+        )
+        results_result = await self.session.execute(results_query)
+        election_results = results_result.scalars().all()
+
+        # Calculate totals
+        total_valid_votes = sum(er.valid_votes for er in election_results)
+        total_accredited_voters = sum(
+            er.accredited_voters for er in election_results
+        )
+        total_rejected_votes = sum(
+            er.rejected_votes for er in election_results
+        )
+        processed_polling_units = len(election_results)
+
+        # Get election result IDs for party aggregation
+        election_result_ids = [er.id for er in election_results]
+
+        # Aggregate party votes
+        party_aggregations = await self._aggregate_party_votes(
+            election_result_ids=election_result_ids,
+            total_valid_votes=total_valid_votes,
+        )
+
+        # Count flagged results
+        flagged_count = await self._count_flagged_results(election_result_ids)
+
+        # Total polling units across all wards (system-wide for this election type)
+        total_pu_query = select(func.count(PollingUnit.id))
+        total_pu_result = await self.session.execute(total_pu_query)
+        total_polling_units = total_pu_result.scalar() or 0
+
+        return AggregationResult(
+            level="election_type",
+            location_id=election_type_id,
+            location_name=election_type.name,
+            election_type_id=election_type_id,
+            election_type_code=election_type.code,
+            party_results=party_aggregations,
+            total_valid_votes=total_valid_votes,
+            total_accredited_voters=total_accredited_voters,
+            total_rejected_votes=total_rejected_votes,
+            total_polling_units=total_polling_units,
+            processed_polling_units=processed_polling_units,
+            flagged_polling_units=flagged_count,
+        )
+
     async def _aggregate_for_polling_units(
         self,
         level: str,
