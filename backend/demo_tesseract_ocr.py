@@ -354,10 +354,16 @@ def run_simulated_demo():
     print(f"   Results saved to: {results_file}")
 
     # Aggregate totals
-    total_apc = sum(next((p['votes'] for p in r['parties'] if p['code'] == 'APC'), 0) for r in simulated_results)
-    total_pdp = sum(next((p['votes'] for p in r['parties'] if p['code'] == 'PDP'), 0) for r in simulated_results)
-    total_lp = sum(next((p['votes'] for p in r['parties'] if p['code'] == 'LP'), 0) for r in simulated_results)
-    total_nnpp = sum(next((p['votes'] for p in r['parties'] if p['code'] == 'NNPP'), 0) for r in simulated_results)
+    def _party_votes(code: str) -> int:
+        return sum(
+            next((p['votes'] for p in r['parties'] if p['code'] == code), 0)
+            for r in simulated_results
+        )
+
+    total_apc = _party_votes('APC')
+    total_pdp = _party_votes('PDP')
+    total_lp = _party_votes('LP')
+    total_nnpp = _party_votes('NNPP')
 
     print("\n📊 AGGREGATED RESULTS (4 Polling Units)")
     print("="*60)

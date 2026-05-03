@@ -148,7 +148,7 @@ async def get_lgas(
         select(LGA).where(LGA.state_id == state_obj.id).order_by(LGA.name)
     )
     lgas = result.scalars().all()
-    return [LGAResponse.model_validate(l) for l in lgas]
+    return [LGAResponse.model_validate(lga) for lga in lgas]
 
 
 @router.get("/{election_type}/{state}/{lga}/wards", response_model=list[WardResponse])

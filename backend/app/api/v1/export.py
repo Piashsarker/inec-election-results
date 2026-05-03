@@ -247,7 +247,10 @@ async def download_export(
         else:
             raise HTTPException(
                 status_code=404,
-                detail="Export file not found. It may still be processing or the export ID is invalid."
+                detail=(
+                    "Export file not found. It may still be processing"
+                    " or the export ID is invalid."
+                ),
             )
 
     if not os.path.exists(file_path):

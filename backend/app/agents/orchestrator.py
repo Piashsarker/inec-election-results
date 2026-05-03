@@ -72,7 +72,11 @@ class JobCheckpoint:
             processed_units=set(data.get("processed_units", [])),
             pending_units=data.get("pending_units", []),
             failed_units=data.get("failed_units", []),
-            timestamp=datetime.fromisoformat(data["timestamp"]) if "timestamp" in data else datetime.utcnow(),
+            timestamp=(
+                datetime.fromisoformat(data["timestamp"])
+                if "timestamp" in data
+                else datetime.utcnow()
+            ),
         )
 
 
@@ -431,7 +435,10 @@ class OrchestratorAgent:
             return False
 
         if self._jobs[job_id].status not in (JobStatus.RUNNING, JobStatus.PAUSED):
-            logger.warning(f"Job {job_id} cannot be cancelled in status {self._jobs[job_id].status}")
+            job_status = self._jobs[job_id].status
+            logger.warning(
+                f"Job {job_id} cannot be cancelled in status {job_status}"
+            )
             return False
 
         logger.info(f"Cancelling job {job_id}")
@@ -546,7 +553,9 @@ class OrchestratorAgent:
 
         # Check if we should stop the job
         if job_id in self._jobs:
-            failure_rate = self._jobs[job_id].failed_count / max(self._jobs[job_id].processed_count, 1)
+            failed = self._jobs[job_id].failed_count
+            processed = max(self._jobs[job_id].processed_count, 1)
+            failure_rate = failed / processed
             if failure_rate > self.config.failure_threshold:
                 logger.warning(
                     f"Job {job_id} failure rate ({failure_rate:.2%}) exceeds threshold, "

@@ -349,7 +349,8 @@ def should_store_or_flag(state: AgentState) -> str:
         logger.info("Validation passed, storing result")
         return "store"
     else:
-        logger.info(f"Validation failed or flagged, reason: {validation_results.get('flag_reason', 'unknown')}")
+        flag_reason = validation_results.get('flag_reason', 'unknown')
+        logger.info(f"Validation failed or flagged, reason: {flag_reason}")
         return "flag"
 
 

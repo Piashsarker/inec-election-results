@@ -118,7 +118,7 @@ def create_sample_result_image(path: Path, data: dict):
         font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 14)
         title_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 18)
         bold_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 14)
-    except:
+    except Exception:
         font = ImageFont.load_default()
         title_font = font
         bold_font = font

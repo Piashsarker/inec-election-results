@@ -305,7 +305,11 @@ class NavigatorAgent:
             # Update state with downloaded image info
             state["downloaded_images"].append({
                 "file_path": result.download_result.file_path,
-                "file_format": result.download_result.file_format.value if result.download_result.file_format else None,
+                "file_format": (
+                    result.download_result.file_format.value
+                    if result.download_result.file_format
+                    else None
+                ),
                 "file_size": result.download_result.file_size,
                 "polling_unit_id": polling_unit.id,
                 "download_attempts": result.download_result.attempts,

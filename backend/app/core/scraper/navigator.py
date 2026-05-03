@@ -267,7 +267,10 @@ class PortalNavigator:
             raise
         except Exception as e:
             logger.error(f"Failed to get wards: {e}", extra={"lga": lga})
-            raise NavigationError("wards", str(e), {"election_type": election_type, "state": state, "lga": lga})
+            raise NavigationError(
+                "wards", str(e),
+                {"election_type": election_type, "state": state, "lga": lga},
+            )
 
     async def get_polling_units(
         self, election_type: str, state: str, lga: str, ward: str

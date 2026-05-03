@@ -114,7 +114,9 @@ class GPT4VisionEngine:
     """
 
     # Extraction prompt for Nigerian election result sheets
-    EXTRACTION_PROMPT = """Analyze this Nigerian election result sheet image and extract the following information:
+    EXTRACTION_PROMPT = (
+        """Analyze this Nigerian election result sheet image """
+        """and extract the following information:
 
 1. All political party names and their abbreviations (codes)
 2. Vote count for each party (numeric values only)
@@ -151,6 +153,7 @@ Rules:
 - Set confidence between 0.0 and 1.0 based on image clarity and your certainty
 - If you cannot read the document at all, set confidence to 0.0
 - Return ONLY the JSON, no additional text"""
+    )
 
     VERIFICATION_PROMPT = """Verify the following extracted election data against the image:
 

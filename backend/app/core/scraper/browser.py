@@ -310,7 +310,8 @@ class BrowserManager:
             except NetworkError as e:
                 last_error = e.message
                 logger.warning(
-                    f"Network error on attempt {attempt + 1}/{self.max_retries} for {url}: {e.message}"
+                    f"Network error on attempt {attempt + 1}/"
+                    f"{self.max_retries} for {url}: {e.message}"
                 )
 
             # Calculate backoff time for next attempt

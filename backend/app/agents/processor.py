@@ -319,12 +319,17 @@ class ProcessorAgent:
 
         # Handle the case where vision_result is already an ExtractionResult-like object
         if hasattr(vision_result, 'parties'):
+            conf = (
+                vision_result.confidence
+                if hasattr(vision_result, 'confidence')
+                else 0.8
+            )
             party_votes = [
                 PartyVote(
                     party_name=p.get('name', ''),
                     party_code=p.get('code', ''),
                     votes=p.get('votes', 0),
-                    confidence=vision_result.confidence if hasattr(vision_result, 'confidence') else 0.8,
+                    confidence=conf,
                 )
                 for p in vision_result.parties
             ]
