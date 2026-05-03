@@ -58,6 +58,31 @@ export interface AggregatedResult {
   flaggedPollingUnits: number;
 }
 
+// Election-type-level aggregation (Issue #6)
+export interface ElectionTypeAggregation {
+  level: 'election_type';
+  location_id: string;
+  location_name: string;
+  election_type_id: string;
+  election_type_code: string;
+  party_results: ElectionTypePartyResult[];
+  total_valid_votes: number;
+  total_accredited_voters: number;
+  total_rejected_votes: number;
+  total_polling_units: number;
+  processed_polling_units: number;
+  flagged_polling_units: number;
+}
+
+export interface ElectionTypePartyResult {
+  party_id: string;
+  party_name: string;
+  party_code: string;
+  total_votes: number;
+  percentage: number;
+  rank: number;
+}
+
 // Geographic hierarchy types
 export interface State {
   id: string;
