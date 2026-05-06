@@ -23,10 +23,10 @@ if TYPE_CHECKING:
 
 class State(BaseModel):
     """Model representing a Nigerian state.
-    
+
     Nigeria has 36 states plus the Federal Capital Territory (FCT).
     Each state contains multiple Local Government Areas (LGAs).
-    
+
     Attributes:
         id: UUID primary key
         name: Full name of the state (e.g., "Lagos")
@@ -69,10 +69,10 @@ class State(BaseModel):
 
 class LGA(BaseModel):
     """Model representing a Local Government Area.
-    
+
     LGAs are administrative subdivisions within a state.
     Each LGA contains multiple electoral wards.
-    
+
     Attributes:
         id: UUID primary key
         state_id: Foreign key to parent state
@@ -129,9 +129,9 @@ class LGA(BaseModel):
 
 class Ward(BaseModel):
     """Model representing an electoral ward (Registration Area).
-    
+
     Wards are subdivisions within an LGA and contain multiple polling units.
-    
+
     Attributes:
         id: UUID primary key
         lga_id: Foreign key to parent LGA
@@ -188,10 +188,10 @@ class Ward(BaseModel):
 
 class PollingUnit(BaseModel):
     """Model representing a polling unit.
-    
+
     Polling units are the smallest electoral units where votes are cast and counted.
     Each polling unit belongs to a ward and has election results associated with it.
-    
+
     Attributes:
         id: UUID primary key
         ward_id: Foreign key to parent ward

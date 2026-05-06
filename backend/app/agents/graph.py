@@ -7,10 +7,9 @@ Requirements: 1.1, 2.1, 3.1, 4.2
 """
 from __future__ import annotations
 
-
 import logging
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any, TypedDict
 
 from langgraph.graph import END, StateGraph
@@ -18,7 +17,7 @@ from langgraph.graph import END, StateGraph
 logger = logging.getLogger("inec_agent.agents.graph")
 
 
-class ProcessingStatus(str, Enum):
+class ProcessingStatus(StrEnum):
     """Status of the processing workflow."""
 
     PENDING = "pending"
@@ -69,10 +68,10 @@ class ProcessingError:
 
 class AgentState(TypedDict):
     """State shared across agents in the LangGraph workflow.
-    
+
     This TypedDict defines the state that flows through the workflow,
     containing all information needed for processing election results.
-    
+
     Attributes:
         job_id: Unique identifier for the scraping job
         current_location: Current position in portal hierarchy
@@ -117,14 +116,14 @@ def create_initial_state(
     ward: str = "",
 ) -> AgentState:
     """Create initial agent state for a new workflow.
-    
+
     Args:
         job_id: Unique job identifier
         election_type: Target election type
         state: Target state
         lga: Target LGA
         ward: Target ward
-        
+
     Returns:
         Initial AgentState
     """
@@ -153,13 +152,13 @@ def create_initial_state(
 
 async def navigate_node(state: AgentState) -> AgentState:
     """Navigate to the polling unit in the portal.
-    
+
     This node handles navigation through the INEC portal hierarchy
     to reach the target polling unit.
-    
+
     Args:
         state: Current agent state
-        
+
     Returns:
         Updated agent state with navigation results
     """
@@ -175,13 +174,13 @@ async def navigate_node(state: AgentState) -> AgentState:
 
 async def download_node(state: AgentState) -> AgentState:
     """Download result sheet image for the polling unit.
-    
+
     This node handles downloading the result sheet image from
     the INEC portal.
-    
+
     Args:
         state: Current agent state
-        
+
     Returns:
         Updated agent state with download results
     """
@@ -197,13 +196,13 @@ async def download_node(state: AgentState) -> AgentState:
 
 async def preprocess_node(state: AgentState) -> AgentState:
     """Preprocess the downloaded image for OCR.
-    
+
     This node handles image preprocessing including grayscale conversion,
     deskewing, noise removal, and contrast enhancement.
-    
+
     Args:
         state: Current agent state
-        
+
     Returns:
         Updated agent state with preprocessing results
     """
@@ -218,13 +217,13 @@ async def preprocess_node(state: AgentState) -> AgentState:
 
 async def ocr_node(state: AgentState) -> AgentState:
     """Perform OCR on the preprocessed image.
-    
+
     This node handles OCR processing using either Tesseract or
     GPT-4 Vision based on image quality.
-    
+
     Args:
         state: Current agent state
-        
+
     Returns:
         Updated agent state with OCR results
     """
@@ -239,13 +238,13 @@ async def ocr_node(state: AgentState) -> AgentState:
 
 async def extract_node(state: AgentState) -> AgentState:
     """Extract structured data from OCR results.
-    
+
     This node handles parsing OCR output to extract party names,
     vote counts, and summary fields.
-    
+
     Args:
         state: Current agent state
-        
+
     Returns:
         Updated agent state with extracted data
     """
@@ -260,13 +259,13 @@ async def extract_node(state: AgentState) -> AgentState:
 
 async def validate_node(state: AgentState) -> AgentState:
     """Validate extracted election data.
-    
+
     This node handles data validation including vote sum validation,
     totals validation, and confidence scoring.
-    
+
     Args:
         state: Current agent state
-        
+
     Returns:
         Updated agent state with validation results
     """
@@ -281,13 +280,13 @@ async def validate_node(state: AgentState) -> AgentState:
 
 async def store_node(state: AgentState) -> AgentState:
     """Store validated election data in the database.
-    
+
     This node handles persisting the extracted and validated
     election data to the database.
-    
+
     Args:
         state: Current agent state
-        
+
     Returns:
         Updated agent state after storage
     """
@@ -304,13 +303,13 @@ async def store_node(state: AgentState) -> AgentState:
 
 async def flag_node(state: AgentState) -> AgentState:
     """Flag result for manual review.
-    
+
     This node handles flagging results that failed validation
     or have low confidence scores.
-    
+
     Args:
         state: Current agent state
-        
+
     Returns:
         Updated agent state after flagging
     """
@@ -327,13 +326,13 @@ async def flag_node(state: AgentState) -> AgentState:
 
 def should_store_or_flag(state: AgentState) -> str:
     """Determine whether to store or flag the result.
-    
+
     This conditional edge function checks validation results
     to determine the next step in the workflow.
-    
+
     Args:
         state: Current agent state
-        
+
     Returns:
         "store" if validation passed, "flag" otherwise
     """
@@ -356,15 +355,15 @@ def should_store_or_flag(state: AgentState) -> str:
 
 def create_agent_graph() -> StateGraph:
     """Create the LangGraph workflow for election data processing.
-    
+
     This function creates a StateGraph with nodes for each processing
     step and edges defining the workflow flow.
-    
+
     Workflow:
     1. navigate -> download -> preprocess -> ocr -> extract -> validate
     2. validate -> store (if valid) or flag (if invalid)
     3. store/flag -> END
-    
+
     Returns:
         Compiled StateGraph workflow
     """
@@ -415,7 +414,7 @@ _compiled_graph = None
 
 def get_agent_graph() -> StateGraph:
     """Get or create the compiled agent graph.
-    
+
     Returns:
         Compiled StateGraph workflow (cached)
     """

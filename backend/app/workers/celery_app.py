@@ -88,7 +88,7 @@ celery_app.autodiscover_tasks(["app.workers"])
 
 def get_celery_app() -> Celery:
     """Get the configured Celery application instance.
-    
+
     Returns:
         Celery: The configured Celery application
     """
@@ -97,10 +97,10 @@ def get_celery_app() -> Celery:
 
 def get_task_info(task_id: str) -> dict[str, Any]:
     """Get information about a Celery task.
-    
+
     Args:
         task_id: The Celery task ID
-        
+
     Returns:
         Dictionary containing task state and result information
     """
@@ -130,11 +130,11 @@ def get_task_info(task_id: str) -> dict[str, Any]:
 
 def revoke_task(task_id: str, terminate: bool = False) -> bool:
     """Revoke (cancel) a Celery task.
-    
+
     Args:
         task_id: The Celery task ID to revoke
         terminate: If True, terminate the task even if it's running
-        
+
     Returns:
         True if revocation was sent successfully
     """

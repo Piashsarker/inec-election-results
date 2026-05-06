@@ -8,9 +8,8 @@ Requirements: 3.1
 """
 from __future__ import annotations
 
-
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 import cv2
@@ -18,7 +17,7 @@ import numpy as np
 from PIL import Image
 
 
-class ImageFormat(str, Enum):
+class ImageFormat(StrEnum):
     """Supported image formats."""
 
     PNG = "png"
@@ -29,7 +28,7 @@ class ImageFormat(str, Enum):
 @dataclass
 class QualityScore:
     """Image quality assessment result for OCR engine selection.
-    
+
     Attributes:
         sharpness: Laplacian variance measuring image sharpness (0-1000+)
         contrast: Contrast ratio of the image (0-1)
@@ -54,7 +53,7 @@ class QualityScore:
 @dataclass
 class ProcessedImage:
     """Result of image preprocessing.
-    
+
     Attributes:
         image: Preprocessed image as numpy array
         original_path: Path to the original image
@@ -72,18 +71,18 @@ class ProcessedImage:
 
 class ImagePreprocessor:
     """Preprocesses images for optimal OCR performance.
-    
+
     This class implements a preprocessing pipeline that includes:
     1. Grayscale conversion
     2. Deskew (rotation correction)
     3. Noise removal (Gaussian blur + thresholding)
     4. Contrast enhancement (CLAHE)
     5. Binarization (Otsu's method)
-    
+
     The quality assessment helps determine which OCR engine to use:
     - High quality images -> Tesseract (faster, good for clean documents)
     - Low quality/handwritten -> GPT-4 Vision (better understanding)
-    
+
     Requirements: 3.1
     """
 
@@ -102,7 +101,7 @@ class ImagePreprocessor:
         denoise_strength: int = 10,
     ):
         """Initialize the image preprocessor.
-        
+
         Args:
             quality_threshold: Threshold for high/low quality classification
             clahe_clip_limit: Clip limit for CLAHE contrast enhancement
@@ -125,24 +124,24 @@ class ImagePreprocessor:
         apply_binarize: bool = False,
     ) -> ProcessedImage:
         """Apply preprocessing pipeline to an image.
-        
+
         Steps:
         1. Load and convert to grayscale
         2. Deskew (correct rotation)
         3. Remove noise (Gaussian blur + threshold)
         4. Enhance contrast (CLAHE)
         5. Optionally binarize (Otsu's method)
-        
+
         Args:
             image_path: Path to the input image
             apply_deskew: Whether to apply deskew correction
             apply_denoise: Whether to apply noise removal
             apply_contrast: Whether to apply contrast enhancement
             apply_binarize: Whether to apply binarization
-            
+
         Returns:
             ProcessedImage with preprocessed image and metadata
-            
+
         Raises:
             FileNotFoundError: If image file doesn't exist
             ValueError: If image cannot be loaded
@@ -205,14 +204,14 @@ class ImagePreprocessor:
         apply_binarize: bool = False,
     ) -> ProcessedImage:
         """Apply preprocessing pipeline to a numpy array image.
-        
+
         Args:
             image: Input image as numpy array
             apply_deskew: Whether to apply deskew correction
             apply_denoise: Whether to apply noise removal
             apply_contrast: Whether to apply contrast enhancement
             apply_binarize: Whether to apply binarization
-            
+
         Returns:
             ProcessedImage with preprocessed image and metadata
         """
@@ -258,16 +257,16 @@ class ImagePreprocessor:
 
     def assess_quality(self, image: np.ndarray) -> QualityScore:
         """Assess image quality for OCR engine selection.
-        
+
         Metrics evaluated:
         - Sharpness: Laplacian variance (higher = sharper)
         - Contrast: Standard deviation ratio (higher = better contrast)
         - Noise level: Estimated from high-frequency components
         - Text density: Estimated from edge detection
-        
+
         Args:
             image: Grayscale image as numpy array
-            
+
         Returns:
             QualityScore with metrics and recommended OCR engine
         """
@@ -316,12 +315,12 @@ class ImagePreprocessor:
 
     def _load_image(self, image_path: Path) -> np.ndarray | None:
         """Load image from file path.
-        
+
         Supports common image formats (PNG, JPEG, etc.) and PDF first page.
-        
+
         Args:
             image_path: Path to the image file
-            
+
         Returns:
             Image as numpy array or None if loading fails
         """
@@ -344,10 +343,10 @@ class ImagePreprocessor:
 
     def _load_pdf_first_page(self, pdf_path: Path) -> np.ndarray | None:
         """Load first page of PDF as image.
-        
+
         Args:
             pdf_path: Path to PDF file
-            
+
         Returns:
             First page as numpy array or None if loading fails
         """
@@ -368,10 +367,10 @@ class ImagePreprocessor:
 
     def _to_grayscale(self, image: np.ndarray) -> np.ndarray:
         """Convert image to grayscale.
-        
+
         Args:
             image: Color image as numpy array (BGR or RGB)
-            
+
         Returns:
             Grayscale image
         """
@@ -384,13 +383,13 @@ class ImagePreprocessor:
 
     def _deskew(self, image: np.ndarray) -> tuple[np.ndarray, float]:
         """Correct image rotation (deskew).
-        
+
         Uses Hough line transform to detect dominant line angle
         and rotates the image to correct skew.
-        
+
         Args:
             image: Grayscale image
-            
+
         Returns:
             Tuple of (deskewed image, rotation angle in degrees)
         """
@@ -457,13 +456,13 @@ class ImagePreprocessor:
 
     def _remove_noise(self, image: np.ndarray) -> np.ndarray:
         """Remove noise from image.
-        
+
         Uses Non-local Means Denoising for grayscale images,
         which preserves edges while removing noise.
-        
+
         Args:
             image: Grayscale image
-            
+
         Returns:
             Denoised image
         """
@@ -479,13 +478,13 @@ class ImagePreprocessor:
 
     def _enhance_contrast(self, image: np.ndarray) -> np.ndarray:
         """Enhance image contrast using CLAHE.
-        
+
         CLAHE (Contrast Limited Adaptive Histogram Equalization)
         enhances local contrast while limiting noise amplification.
-        
+
         Args:
             image: Grayscale image
-            
+
         Returns:
             Contrast-enhanced image
         """
@@ -499,13 +498,13 @@ class ImagePreprocessor:
 
     def _binarize(self, image: np.ndarray) -> np.ndarray:
         """Binarize image using Otsu's method.
-        
+
         Otsu's method automatically determines the optimal threshold
         for separating foreground (text) from background.
-        
+
         Args:
             image: Grayscale image
-            
+
         Returns:
             Binary image (black text on white background)
         """
@@ -528,12 +527,12 @@ class ImagePreprocessor:
 
     def _calculate_sharpness(self, image: np.ndarray) -> float:
         """Calculate image sharpness using Laplacian variance.
-        
+
         Higher variance indicates sharper image with more defined edges.
-        
+
         Args:
             image: Grayscale image
-            
+
         Returns:
             Sharpness score (Laplacian variance)
         """
@@ -543,12 +542,12 @@ class ImagePreprocessor:
 
     def _calculate_contrast(self, image: np.ndarray) -> float:
         """Calculate image contrast ratio.
-        
+
         Uses standard deviation normalized by mean intensity.
-        
+
         Args:
             image: Grayscale image
-            
+
         Returns:
             Contrast ratio (0-1)
         """
@@ -564,12 +563,12 @@ class ImagePreprocessor:
 
     def _estimate_noise(self, image: np.ndarray) -> float:
         """Estimate noise level in image.
-        
+
         Uses high-pass filter to isolate noise components.
-        
+
         Args:
             image: Grayscale image
-            
+
         Returns:
             Noise level estimate (0-1, lower is better)
         """
@@ -585,13 +584,13 @@ class ImagePreprocessor:
 
     def _estimate_text_density(self, image: np.ndarray) -> float:
         """Estimate text density in image.
-        
+
         Uses edge detection to estimate how much of the image
         contains text or other content.
-        
+
         Args:
             image: Grayscale image
-            
+
         Returns:
             Text density estimate (0-1)
         """
@@ -612,12 +611,12 @@ class ImagePreprocessor:
         format: str = "png",
     ) -> Path:
         """Save preprocessed image to file.
-        
+
         Args:
             processed: ProcessedImage to save
             output_path: Output file path
             format: Output format (png, jpeg)
-            
+
         Returns:
             Path to saved file
         """

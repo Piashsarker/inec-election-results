@@ -11,7 +11,6 @@ Requirements: 1.2, 1.3, 1.4, 1.5, 1.6
 """
 from __future__ import annotations
 
-
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -88,7 +87,7 @@ async def get_election_types(
     session: AsyncSession = Depends(get_async_session),
 ) -> list[ElectionTypeResponse]:
     """Get all available election types.
-    
+
     Returns:
         List of election types (Presidential, Governorship, etc.)
     """
@@ -103,10 +102,10 @@ async def get_states(
     session: AsyncSession = Depends(get_async_session),
 ) -> list[StateResponse]:
     """Get all states for an election type.
-    
+
     Args:
         election_type: Election type code (e.g., 'presidential')
-        
+
     Returns:
         List of 37 states (36 states + FCT)
     """
@@ -129,11 +128,11 @@ async def get_lgas(
     session: AsyncSession = Depends(get_async_session),
 ) -> list[LGAResponse]:
     """Get all LGAs for a state.
-    
+
     Args:
         election_type: Election type code
         state: State code
-        
+
     Returns:
         List of LGAs in the state
     """
@@ -160,12 +159,12 @@ async def get_wards(
     session: AsyncSession = Depends(get_async_session),
 ) -> list[WardResponse]:
     """Get all wards for an LGA.
-    
+
     Args:
         election_type: Election type code
         state: State code
         lga: LGA code
-        
+
     Returns:
         List of wards in the LGA
     """
@@ -204,13 +203,13 @@ async def get_polling_units(
     session: AsyncSession = Depends(get_async_session),
 ) -> list[PollingUnitResponse]:
     """Get all polling units for a ward.
-    
+
     Args:
         election_type: Election type code
         state: State code
         lga: LGA code
         ward: Ward code
-        
+
     Returns:
         List of polling units in the ward
     """

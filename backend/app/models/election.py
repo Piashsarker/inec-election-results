@@ -35,10 +35,10 @@ if TYPE_CHECKING:
 
 class ElectionType(BaseModel):
     """Model representing a type of election.
-    
+
     Election types include Presidential, Governorship, Senatorial,
     House of Representatives, House of Assembly, Chairmanship, and Councilor.
-    
+
     Attributes:
         id: UUID primary key
         name: Full name of the election type (e.g., "Presidential Election")
@@ -74,9 +74,9 @@ class ElectionType(BaseModel):
 
 class PoliticalParty(BaseModel):
     """Model representing a political party.
-    
+
     Stores information about Nigerian political parties participating in elections.
-    
+
     Attributes:
         id: UUID primary key
         name: Full name of the party (e.g., "All Progressives Congress")
@@ -116,10 +116,10 @@ class PoliticalParty(BaseModel):
 
 class ElectionResult(BaseModel):
     """Model representing election results for a polling unit.
-    
+
     Stores the extracted election data from a result sheet image for a specific
     polling unit and election type combination.
-    
+
     Attributes:
         id: UUID primary key
         election_type_id: Foreign key to election type
@@ -223,10 +223,10 @@ class ElectionResult(BaseModel):
 
 class PartyResult(BaseModel):
     """Model representing vote count for a party in an election result.
-    
+
     Stores the vote count and percentage for a specific political party
     within an election result.
-    
+
     Attributes:
         id: UUID primary key
         election_result_id: Foreign key to election result

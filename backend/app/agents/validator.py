@@ -7,7 +7,6 @@ Requirements: 3.6, 3.7, 3.8
 """
 from __future__ import annotations
 
-
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -26,7 +25,7 @@ logger = logging.getLogger("inec_agent.agents.validator")
 @dataclass
 class FlaggedResult:
     """A result flagged for manual review.
-    
+
     Attributes:
         polling_unit_id: Polling unit identifier
         reason: Reason for flagging
@@ -46,13 +45,13 @@ class FlaggedResult:
 
 class ValidatorAgent:
     """Agent for validating extracted election data.
-    
+
     This agent handles:
     - Cross-field validation (vote sums, totals)
     - Confidence scoring
     - Anomaly detection
     - Flagging results for manual review
-    
+
     Requirements: 3.6, 3.7, 3.8
     """
 
@@ -63,7 +62,7 @@ class ValidatorAgent:
         flag_on_warning: bool = False,
     ):
         """Initialize the validator agent.
-        
+
         Args:
             vote_sum_tolerance: Tolerance for vote sum validation (±votes)
             min_confidence: Minimum confidence to not flag
@@ -85,17 +84,17 @@ class ValidatorAgent:
 
     def validate(self, extraction_result: ExtractionResult) -> ValidationResult:
         """Validate extracted election data.
-        
+
         Validation rules:
         1. Sum of party votes ≈ valid votes (within tolerance)
         2. Valid votes + rejected votes ≤ accredited voters
         3. All vote counts are non-negative
         4. Party names are recognized
         5. No duplicate parties
-        
+
         Args:
             extraction_result: Extraction result to validate
-            
+
         Returns:
             ValidationResult with errors, warnings, and confidence
         """
@@ -104,10 +103,10 @@ class ValidatorAgent:
 
     def validate_from_dict(self, extracted_data: dict[str, Any]) -> ValidationResult:
         """Validate extracted data from dictionary format.
-        
+
         Args:
             extracted_data: Extracted data dictionary
-            
+
         Returns:
             ValidationResult with errors, warnings, and confidence
         """
@@ -123,13 +122,13 @@ class ValidatorAgent:
         extracted_data: dict[str, Any] | None = None,
     ) -> FlaggedResult:
         """Flag a result for manual review.
-        
+
         Args:
             polling_unit_id: Polling unit identifier
             reason: Reason for flagging
             validation_result: Validation result
             extracted_data: The extracted data
-            
+
         Returns:
             FlaggedResult object
         """
@@ -153,13 +152,13 @@ class ValidatorAgent:
         state: AgentState,
     ) -> AgentState:
         """Process the validation step for the workflow.
-        
+
         This method is called by the LangGraph workflow to handle
         validation of extracted data.
-        
+
         Args:
             state: Current agent state
-            
+
         Returns:
             Updated agent state with validation results
         """
@@ -245,11 +244,11 @@ class ValidatorAgent:
         validation_result: ValidationResult,
     ) -> tuple[bool, str]:
         """Determine if a result should be flagged for manual review.
-        
+
         Args:
             extraction_result: Extraction result
             validation_result: Validation result
-            
+
         Returns:
             Tuple of (should_flag, reason)
         """
@@ -282,7 +281,7 @@ class ValidatorAgent:
 
     def get_flagged_results(self) -> list[FlaggedResult]:
         """Get all flagged results.
-        
+
         Returns:
             List of FlaggedResult objects
         """
@@ -290,7 +289,7 @@ class ValidatorAgent:
 
     def get_flagged_count(self) -> int:
         """Get count of flagged results.
-        
+
         Returns:
             Number of flagged results
         """
@@ -302,7 +301,7 @@ class ValidatorAgent:
 
     def get_validation_summary(self) -> dict[str, Any]:
         """Get summary of validation results.
-        
+
         Returns:
             Dictionary with validation statistics
         """
@@ -329,10 +328,10 @@ class ValidatorAgent:
 
     def _dict_to_extraction_result(self, data: dict[str, Any]) -> ExtractionResult:
         """Convert dictionary to ExtractionResult.
-        
+
         Args:
             data: Extracted data dictionary
-            
+
         Returns:
             ExtractionResult object
         """

@@ -7,12 +7,11 @@ Requirements: 6.5
 """
 from __future__ import annotations
 
-
 import asyncio
 import logging
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Generic, TypeVar
 
 logger = logging.getLogger("inec_agent.agents.pool")
@@ -21,7 +20,7 @@ T = TypeVar("T")
 R = TypeVar("R")
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     """Status of a task in the pool."""
 
     PENDING = "pending"
@@ -34,7 +33,7 @@ class TaskStatus(str, Enum):
 @dataclass
 class PoolTask(Generic[T, R]):
     """A task to be processed by the agent pool.
-    
+
     Attributes:
         id: Unique task identifier
         data: Task data to process
@@ -55,7 +54,7 @@ class PoolTask(Generic[T, R]):
 @dataclass
 class PoolStats:
     """Statistics for the agent pool.
-    
+
     Attributes:
         total_tasks: Total number of tasks submitted
         pending_tasks: Number of pending tasks
@@ -86,13 +85,13 @@ class PoolStats:
 
 class AgentPool(Generic[T, R]):
     """Pool for parallel processing of tasks with concurrency control.
-    
+
     This class manages a pool of concurrent tasks with:
     - Semaphore-based concurrency limiting
     - Task queue management
     - Progress tracking
     - Error handling and retry support
-    
+
     Requirements: 6.5
     """
 
@@ -103,7 +102,7 @@ class AgentPool(Generic[T, R]):
         retry_delay: float = 1.0,
     ):
         """Initialize the agent pool.
-        
+
         Args:
             pool_size: Maximum number of concurrent tasks
             max_retries: Maximum retry attempts for failed tasks
@@ -138,7 +137,7 @@ class AgentPool(Generic[T, R]):
         data: T,
     ) -> None:
         """Submit a task to the pool.
-        
+
         Args:
             task_id: Unique task identifier
             data: Task data to process
@@ -160,7 +159,7 @@ class AgentPool(Generic[T, R]):
         tasks: list[tuple[str, T]],
     ) -> None:
         """Submit multiple tasks to the pool.
-        
+
         Args:
             tasks: List of (task_id, data) tuples
         """
@@ -174,12 +173,12 @@ class AgentPool(Generic[T, R]):
         on_error: Callable[[str, Exception], None] | None = None,
     ) -> dict[str, R]:
         """Process all submitted tasks.
-        
+
         Args:
             process_func: Async function to process each task
             on_complete: Optional callback for completed tasks
             on_error: Optional callback for failed tasks
-            
+
         Returns:
             Dictionary mapping task IDs to results
         """
@@ -267,14 +266,14 @@ class AgentPool(Generic[T, R]):
         id_func: Callable[[T], str] | None = None,
     ) -> list[R]:
         """Process a batch of items in parallel.
-        
+
         This is a convenience method that submits all items and processes them.
-        
+
         Args:
             items: List of items to process
             process_func: Async function to process each item
             id_func: Optional function to generate task IDs from items
-            
+
         Returns:
             List of results in the same order as input items
         """
@@ -308,7 +307,7 @@ class AgentPool(Generic[T, R]):
 
     def is_paused(self) -> bool:
         """Check if the pool is paused.
-        
+
         Returns:
             True if paused
         """
@@ -316,7 +315,7 @@ class AgentPool(Generic[T, R]):
 
     async def shutdown(self, wait: bool = True) -> None:
         """Shutdown the pool.
-        
+
         Args:
             wait: Whether to wait for running tasks to complete
         """
@@ -342,10 +341,10 @@ class AgentPool(Generic[T, R]):
 
     def get_task(self, task_id: str) -> PoolTask[T, R] | None:
         """Get a task by ID.
-        
+
         Args:
             task_id: Task identifier
-            
+
         Returns:
             PoolTask or None if not found
         """
@@ -353,7 +352,7 @@ class AgentPool(Generic[T, R]):
 
     def get_stats(self) -> PoolStats:
         """Get pool statistics.
-        
+
         Returns:
             PoolStats object
         """
@@ -361,7 +360,7 @@ class AgentPool(Generic[T, R]):
 
     def get_failed_tasks(self) -> list[PoolTask[T, R]]:
         """Get all failed tasks.
-        
+
         Returns:
             List of failed PoolTask objects
         """
@@ -372,7 +371,7 @@ class AgentPool(Generic[T, R]):
 
     def get_completed_tasks(self) -> list[PoolTask[T, R]]:
         """Get all completed tasks.
-        
+
         Returns:
             List of completed PoolTask objects
         """
@@ -396,7 +395,7 @@ class AgentPool(Generic[T, R]):
 
 class PollingUnitPool(AgentPool[dict[str, Any], dict[str, Any]]):
     """Specialized agent pool for processing polling units.
-    
+
     This pool is configured for processing election result data
     from polling units with appropriate defaults.
     """
@@ -407,7 +406,7 @@ class PollingUnitPool(AgentPool[dict[str, Any], dict[str, Any]]):
         max_retries: int = 3,
     ):
         """Initialize the polling unit pool.
-        
+
         Args:
             pool_size: Maximum concurrent polling units to process
             max_retries: Maximum retry attempts for failed units
@@ -424,11 +423,11 @@ class PollingUnitPool(AgentPool[dict[str, Any], dict[str, Any]]):
         process_func: Callable[[dict[str, Any]], Coroutine[Any, Any, dict[str, Any]]],
     ) -> dict[str, dict[str, Any]]:
         """Process a list of polling units.
-        
+
         Args:
             polling_units: List of polling unit dictionaries
             process_func: Async function to process each polling unit
-            
+
         Returns:
             Dictionary mapping polling unit IDs to results
         """

@@ -7,14 +7,13 @@ Requirements: 6.3, 6.4, 7.4
 """
 from __future__ import annotations
 
-
 import asyncio
 import logging
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from app.core.scraper.navigator import PollingUnit
@@ -22,7 +21,7 @@ from app.core.scraper.navigator import PollingUnit
 logger = logging.getLogger("inec_agent.agents.orchestrator")
 
 
-class JobStatus(str, Enum):
+class JobStatus(StrEnum):
     """Status of a scraping job."""
 
     QUEUED = "queued"
@@ -36,7 +35,7 @@ class JobStatus(str, Enum):
 @dataclass
 class JobCheckpoint:
     """Checkpoint data for job resumption.
-    
+
     Attributes:
         job_id: Job identifier
         last_processed_pu: Last successfully processed polling unit
@@ -65,7 +64,7 @@ class JobCheckpoint:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "JobCheckpoint":
+    def from_dict(cls, data: dict[str, Any]) -> JobCheckpoint:
         """Create checkpoint from dictionary."""
         return cls(
             job_id=data["job_id"],
@@ -80,7 +79,7 @@ class JobCheckpoint:
 @dataclass
 class JobProgress:
     """Progress information for a scraping job.
-    
+
     Attributes:
         job_id: Job identifier
         status: Current job status
@@ -121,7 +120,7 @@ class JobProgress:
 @dataclass
 class JobConfig:
     """Configuration for a scraping job.
-    
+
     Attributes:
         election_type: Target election type (None = all)
         target_state: Target state (None = all)
@@ -143,14 +142,14 @@ class JobConfig:
 
 class OrchestratorAgent:
     """Central coordinator for the scraping workflow.
-    
+
     This agent manages:
     - Work distribution across navigator and processor agents
     - Progress monitoring and status updates
     - Failure handling and retry logic
     - Job state persistence and checkpoints
     - Pause/resume functionality
-    
+
     Requirements: 6.3, 6.4, 7.4
     """
 
@@ -161,7 +160,7 @@ class OrchestratorAgent:
         progress_callback: Callable[[JobProgress], None] | None = None,
     ):
         """Initialize the orchestrator agent.
-        
+
         Args:
             config: Job configuration
             checkpoint_callback: Callback for checkpoint persistence
@@ -190,17 +189,16 @@ class OrchestratorAgent:
         config: JobConfig | None = None,
     ) -> str:
         """Start a new scraping job.
-        
+
         Args:
             job_id: Optional job ID (generated if not provided)
             polling_units: List of polling units to process
             config: Optional job-specific configuration
-            
+
         Returns:
             Job ID
         """
         job_id = job_id or str(uuid.uuid4())
-        job_config = config or self.config
 
         logger.info(f"Starting job {job_id}")
 
@@ -239,12 +237,12 @@ class OrchestratorAgent:
         process_func: Callable[[PollingUnit], Any],
     ) -> bool:
         """Process a single polling unit.
-        
+
         Args:
             job_id: Job identifier
             polling_unit: Polling unit to process
             process_func: Function to process the unit
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -303,7 +301,7 @@ class OrchestratorAgent:
         process_func: Callable[[PollingUnit], Any],
     ) -> None:
         """Distribute polling units across processing tasks.
-        
+
         Args:
             job_id: Job identifier
             polling_units: List of polling units to process
@@ -336,7 +334,7 @@ class OrchestratorAgent:
         self._processing_tasks[job_id] = tasks
 
         # Wait for all tasks to complete
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        await asyncio.gather(*tasks, return_exceptions=True)
 
         # Check failure threshold
         failure_rate = self._jobs[job_id].failed_count / max(self._jobs[job_id].processed_count, 1)
@@ -364,10 +362,10 @@ class OrchestratorAgent:
 
     async def pause_job(self, job_id: str) -> bool:
         """Pause a running job.
-        
+
         Args:
             job_id: Job identifier
-            
+
         Returns:
             True if paused successfully
         """
@@ -394,10 +392,10 @@ class OrchestratorAgent:
 
     async def resume_job(self, job_id: str) -> bool:
         """Resume a paused job.
-        
+
         Args:
             job_id: Job identifier
-            
+
         Returns:
             True if resumed successfully
         """
@@ -421,10 +419,10 @@ class OrchestratorAgent:
 
     async def cancel_job(self, job_id: str) -> bool:
         """Cancel a running or paused job.
-        
+
         Args:
             job_id: Job identifier
-            
+
         Returns:
             True if cancelled successfully
         """
@@ -462,10 +460,10 @@ class OrchestratorAgent:
 
     def get_job_progress(self, job_id: str) -> JobProgress | None:
         """Get progress information for a job.
-        
+
         Args:
             job_id: Job identifier
-            
+
         Returns:
             JobProgress or None if not found
         """
@@ -473,10 +471,10 @@ class OrchestratorAgent:
 
     def get_job_checkpoint(self, job_id: str) -> JobCheckpoint | None:
         """Get checkpoint data for a job.
-        
+
         Args:
             job_id: Job identifier
-            
+
         Returns:
             JobCheckpoint or None if not found
         """
@@ -487,10 +485,10 @@ class OrchestratorAgent:
         checkpoint: JobCheckpoint,
     ) -> str:
         """Restore a job from a checkpoint.
-        
+
         Args:
             checkpoint: Checkpoint data to restore from
-            
+
         Returns:
             Job ID
         """
@@ -532,7 +530,7 @@ class OrchestratorAgent:
         error: Exception,
     ) -> None:
         """Handle a processing failure.
-        
+
         Args:
             job_id: Job identifier
             polling_unit: Failed polling unit
@@ -557,10 +555,10 @@ class OrchestratorAgent:
 
     def get_summary(self, job_id: str) -> dict[str, Any]:
         """Get summary report for a completed job.
-        
+
         Args:
             job_id: Job identifier
-            
+
         Returns:
             Summary dictionary
         """
@@ -590,7 +588,7 @@ class OrchestratorAgent:
 
     def _update_progress(self, job_id: str) -> None:
         """Update progress calculations for a job.
-        
+
         Args:
             job_id: Job identifier
         """
@@ -615,7 +613,7 @@ class OrchestratorAgent:
 
     def _notify_progress(self, job_id: str) -> None:
         """Notify progress callback if configured.
-        
+
         Args:
             job_id: Job identifier
         """
@@ -627,7 +625,7 @@ class OrchestratorAgent:
 
     async def _save_checkpoint(self, job_id: str) -> None:
         """Save checkpoint for a job.
-        
+
         Args:
             job_id: Job identifier
         """

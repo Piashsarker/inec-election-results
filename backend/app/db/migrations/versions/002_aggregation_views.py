@@ -38,7 +38,7 @@ def upgrade() -> None:
     op.execute("""
         CREATE VIEW ward_aggregation AS
         WITH ward_totals AS (
-            SELECT 
+            SELECT
                 w.id AS ward_id,
                 er.election_type_id,
                 SUM(er.valid_votes) AS total_valid_votes,
@@ -50,7 +50,7 @@ def upgrade() -> None:
             LEFT JOIN flagged_results fr ON fr.election_result_id = er.id
             GROUP BY w.id, er.election_type_id
         )
-        SELECT 
+        SELECT
             w.id AS ward_id,
             w.name AS ward_name,
             w.code AS ward_code,
@@ -65,8 +65,8 @@ def upgrade() -> None:
             pp.code AS party_code,
             pp.name AS party_name,
             COALESCE(SUM(pr.vote_count), 0) AS total_votes,
-            CASE 
-                WHEN wt.total_valid_votes > 0 
+            CASE
+                WHEN wt.total_valid_votes > 0
                 THEN ROUND((COALESCE(SUM(pr.vote_count), 0)::NUMERIC / wt.total_valid_votes) * 100, 2)
                 ELSE 0.00
             END AS vote_percentage,
@@ -82,7 +82,7 @@ def upgrade() -> None:
         JOIN party_results pr ON pr.election_result_id = er.id
         JOIN political_parties pp ON pr.party_id = pp.id
         JOIN ward_totals wt ON wt.ward_id = w.id AND wt.election_type_id = et.id
-        GROUP BY 
+        GROUP BY
             w.id, w.name, w.code, w.total_polling_units,
             l.id, l.name,
             s.id, s.name,
@@ -103,7 +103,7 @@ def upgrade() -> None:
     op.execute("""
         CREATE VIEW lga_aggregation AS
         WITH lga_totals AS (
-            SELECT 
+            SELECT
                 l.id AS lga_id,
                 er.election_type_id,
                 SUM(er.valid_votes) AS total_valid_votes,
@@ -117,14 +117,14 @@ def upgrade() -> None:
             GROUP BY l.id, er.election_type_id
         ),
         lga_polling_unit_counts AS (
-            SELECT 
+            SELECT
                 l.id AS lga_id,
                 SUM(w.total_polling_units) AS total_polling_units
             FROM lgas l
             JOIN wards w ON w.lga_id = l.id
             GROUP BY l.id
         )
-        SELECT 
+        SELECT
             l.id AS lga_id,
             l.name AS lga_name,
             l.code AS lga_code,
@@ -137,8 +137,8 @@ def upgrade() -> None:
             pp.code AS party_code,
             pp.name AS party_name,
             COALESCE(SUM(pr.vote_count), 0) AS total_votes,
-            CASE 
-                WHEN lt.total_valid_votes > 0 
+            CASE
+                WHEN lt.total_valid_votes > 0
                 THEN ROUND((COALESCE(SUM(pr.vote_count), 0)::NUMERIC / lt.total_valid_votes) * 100, 2)
                 ELSE 0.00
             END AS vote_percentage,
@@ -155,7 +155,7 @@ def upgrade() -> None:
         JOIN political_parties pp ON pr.party_id = pp.id
         JOIN lga_totals lt ON lt.lga_id = l.id AND lt.election_type_id = et.id
         LEFT JOIN lga_polling_unit_counts lpuc ON lpuc.lga_id = l.id
-        GROUP BY 
+        GROUP BY
             l.id, l.name, l.code,
             s.id, s.name,
             et.id, et.code, et.name,

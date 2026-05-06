@@ -6,11 +6,10 @@ Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
 """
 from __future__ import annotations
 
-
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 import httpx
@@ -21,7 +20,7 @@ from app.core.scraper.browser import BrowserManager
 logger = logging.getLogger("inec_agent.scraper.downloader")
 
 
-class FileFormat(str, Enum):
+class FileFormat(StrEnum):
     """Supported result sheet file formats."""
     PDF = "pdf"
     PNG = "png"
@@ -51,13 +50,13 @@ class DownloadError(Exception):
 
 class ResultSheetDownloader:
     """Downloads result sheet images from polling units.
-    
+
     This class handles:
     - Downloading result sheets in PDF and PNG formats
     - Generating filenames encoding location hierarchy
     - Retry logic for failed downloads
     - Progress tracking
-    
+
     Requirements:
     - 2.1: Download result sheet image for polling unit
     - 2.2: Support PDF and PNG formats
@@ -73,7 +72,7 @@ class ResultSheetDownloader:
         browser_manager: BrowserManager | None = None,
     ):
         """Initialize the downloader.
-        
+
         Args:
             storage_path: Directory to store downloaded files
             max_retries: Maximum retry attempts for failed downloads
@@ -104,7 +103,7 @@ class ResultSheetDownloader:
         file_format: FileFormat,
     ) -> str:
         """Generate unique filename encoding location hierarchy.
-        
+
         Args:
             election_type: Election type code
             state: State code
@@ -112,7 +111,7 @@ class ResultSheetDownloader:
             ward: Ward code
             pu_id: Polling unit ID
             file_format: File format (pdf/png)
-            
+
         Returns:
             Filename string with hierarchy and timestamp
         """
@@ -127,11 +126,11 @@ class ResultSheetDownloader:
 
     def _detect_format(self, url: str, content_type: str | None = None) -> FileFormat:
         """Detect file format from URL or content type.
-        
+
         Args:
             url: Download URL
             content_type: HTTP Content-Type header
-            
+
         Returns:
             Detected FileFormat
         """
@@ -154,7 +153,7 @@ class ResultSheetDownloader:
         pu_id: str,
     ) -> DownloadResult:
         """Download result sheet image for a polling unit.
-        
+
         Args:
             url: URL of the result sheet image
             election_type: Election type code
@@ -162,7 +161,7 @@ class ResultSheetDownloader:
             lga: LGA code
             ward: Ward code
             pu_id: Polling unit ID
-            
+
         Returns:
             DownloadResult with file path and status
         """
@@ -265,7 +264,7 @@ class ResultSheetDownloader:
 
     def get_progress(self) -> dict:
         """Get download progress statistics.
-        
+
         Returns:
             Dictionary with total, completed, and failed counts
         """

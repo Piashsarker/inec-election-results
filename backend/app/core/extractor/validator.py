@@ -7,14 +7,13 @@ Requirements: 3.6, 3.7, 3.8
 """
 from __future__ import annotations
 
-
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 from app.core.extractor.parser import ExtractionResult
 
 
-class ValidationErrorType(str, Enum):
+class ValidationErrorType(StrEnum):
     """Types of validation errors."""
 
     VOTE_SUM_MISMATCH = "vote_sum_mismatch"
@@ -28,7 +27,7 @@ class ValidationErrorType(str, Enum):
     IMPLAUSIBLE_VALUES = "implausible_values"
 
 
-class ValidationSeverity(str, Enum):
+class ValidationSeverity(StrEnum):
     """Severity levels for validation issues."""
 
     ERROR = "error"  # Must be flagged for review
@@ -39,7 +38,7 @@ class ValidationSeverity(str, Enum):
 @dataclass
 class ValidationError:
     """A validation error or warning.
-    
+
     Attributes:
         error_type: Type of validation error
         field: Field that failed validation
@@ -60,7 +59,7 @@ class ValidationError:
 @dataclass
 class ValidationResult:
     """Result of data validation.
-    
+
     Attributes:
         is_valid: Whether the data passed all validation rules
         errors: List of validation errors
@@ -95,16 +94,16 @@ class ValidationResult:
 
 class DataValidator:
     """Validates extracted election data for consistency.
-    
+
     This validator checks:
     1. Sum of party votes ≈ valid votes (within tolerance)
     2. Valid votes + rejected votes ≤ accredited voters
     3. All vote counts are non-negative
     4. Party names are recognized
     5. No duplicate parties
-    
+
     Results that fail critical validation are flagged for manual review.
-    
+
     Requirements: 3.6, 3.7, 3.8
     """
 
@@ -130,7 +129,7 @@ class DataValidator:
         flag_on_warning: bool = False,
     ):
         """Initialize data validator.
-        
+
         Args:
             vote_sum_tolerance: Tolerance for vote sum validation
             min_confidence: Minimum confidence to not flag
@@ -142,17 +141,17 @@ class DataValidator:
 
     def validate(self, result: ExtractionResult) -> ValidationResult:
         """Validate extracted election data.
-        
+
         Validation rules:
         1. Sum of party votes ≈ valid votes (within tolerance)
         2. Valid votes + rejected votes ≤ accredited voters
         3. All vote counts are non-negative
         4. Party names are recognized
         5. No duplicate parties
-        
+
         Args:
             result: Extraction result to validate
-            
+
         Returns:
             ValidationResult with errors, warnings, and confidence
         """
@@ -214,10 +213,10 @@ class DataValidator:
         self, result: ExtractionResult
     ) -> ValidationError | None:
         """Validate that party votes sum to valid votes.
-        
+
         Args:
             result: Extraction result
-            
+
         Returns:
             ValidationError if validation fails, None otherwise
         """
@@ -256,10 +255,10 @@ class DataValidator:
         self, result: ExtractionResult
     ) -> ValidationError | None:
         """Validate that total votes don't exceed accredited voters.
-        
+
         Args:
             result: Extraction result
-            
+
         Returns:
             ValidationError if validation fails, None otherwise
         """
@@ -287,10 +286,10 @@ class DataValidator:
         self, result: ExtractionResult
     ) -> list[ValidationError]:
         """Validate that all vote counts are non-negative.
-        
+
         Args:
             result: Extraction result
-            
+
         Returns:
             List of ValidationErrors for negative values
         """
@@ -339,10 +338,10 @@ class DataValidator:
         self, result: ExtractionResult
     ) -> list[ValidationError]:
         """Validate that party names are recognized.
-        
+
         Args:
             result: Extraction result
-            
+
         Returns:
             List of ValidationErrors for unrecognized parties
         """
@@ -363,10 +362,10 @@ class DataValidator:
         self, result: ExtractionResult
     ) -> ValidationError | None:
         """Validate that there are no duplicate parties.
-        
+
         Args:
             result: Extraction result
-            
+
         Returns:
             ValidationError if duplicates found, None otherwise
         """
@@ -393,10 +392,10 @@ class DataValidator:
         self, result: ExtractionResult
     ) -> list[ValidationError]:
         """Validate that required data is present.
-        
+
         Args:
             result: Extraction result
-            
+
         Returns:
             List of ValidationErrors for missing data
         """
@@ -432,10 +431,10 @@ class DataValidator:
         self, result: ExtractionResult
     ) -> list[ValidationError]:
         """Validate that values are plausible.
-        
+
         Args:
             result: Extraction result
-            
+
         Returns:
             List of ValidationErrors for implausible values
         """
@@ -471,12 +470,12 @@ class DataValidator:
         warnings: list[ValidationError],
     ) -> float:
         """Calculate adjusted confidence score.
-        
+
         Args:
             result: Extraction result
             errors: List of validation errors
             warnings: List of validation warnings
-            
+
         Returns:
             Adjusted confidence score (0-1)
         """
@@ -499,13 +498,13 @@ class DataValidator:
         confidence: float,
     ) -> tuple[bool, str]:
         """Determine if result should be flagged for manual review.
-        
+
         Args:
             result: Extraction result
             errors: List of validation errors
             warnings: List of validation warnings
             confidence: Adjusted confidence score
-            
+
         Returns:
             Tuple of (should_flag, reason)
         """

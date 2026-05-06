@@ -8,7 +8,6 @@ Requirements: 3.1, 3.2
 """
 from __future__ import annotations
 
-
 import base64
 import json
 import logging
@@ -31,7 +30,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PartyVoteResult:
     """Vote result for a single political party.
-    
+
     Attributes:
         name: Full party name
         code: Party abbreviation/code (e.g., APC, PDP)
@@ -48,7 +47,7 @@ class PartyVoteResult:
 @dataclass
 class ExtractionResult:
     """Result of GPT-4 Vision data extraction.
-    
+
     Attributes:
         parties: List of party vote results
         accredited_voters: Total number of accredited voters
@@ -103,14 +102,14 @@ class ExtractionResult:
 
 class GPT4VisionEngine:
     """GPT-4 Vision for complex/handwritten document understanding.
-    
+
     This engine uses OpenAI's GPT-4 Vision model to extract election
     data from result sheet images. It's particularly effective for:
     - Handwritten documents
     - Low-quality scans
     - Complex layouts
     - Documents where traditional OCR fails
-    
+
     Requirements: 3.1, 3.2
     """
 
@@ -174,13 +173,13 @@ Include a "verification_notes" field with any observations."""
         temperature: float = 0.0,
     ):
         """Initialize GPT-4 Vision engine.
-        
+
         Args:
             api_key: OpenAI API key (uses OPENAI_API_KEY env var if not provided)
             model: OpenAI model to use (gpt-4-vision-preview or gpt-4o)
             max_tokens: Maximum tokens for API response
             temperature: Model temperature (0.0 for deterministic output)
-            
+
         Raises:
             RuntimeError: If OpenAI library is not available
         """
@@ -204,11 +203,11 @@ Include a "verification_notes" field with any observations."""
         verify: bool = False,
     ) -> ExtractionResult:
         """Extract election data from image using GPT-4 Vision.
-        
+
         Args:
             image_path: Path to the result sheet image
             verify: Whether to run verification pass
-            
+
         Returns:
             ExtractionResult with extracted election data
         """
@@ -237,11 +236,11 @@ Include a "verification_notes" field with any observations."""
         verify: bool = False,
     ) -> ExtractionResult:
         """Extract election data asynchronously.
-        
+
         Args:
             image_path: Path to the result sheet image
             verify: Whether to run verification pass
-            
+
         Returns:
             ExtractionResult with extracted election data
         """
@@ -272,11 +271,11 @@ Include a "verification_notes" field with any observations."""
         verify: bool = False,
     ) -> ExtractionResult:
         """Extract election data from numpy array image.
-        
+
         Args:
             image: Image as numpy array
             verify: Whether to run verification pass
-            
+
         Returns:
             ExtractionResult with extracted election data
         """
@@ -297,10 +296,10 @@ Include a "verification_notes" field with any observations."""
 
     def _encode_image(self, image_path: Path) -> str:
         """Encode image file to base64 string.
-        
+
         Args:
             image_path: Path to image file
-            
+
         Returns:
             Base64 encoded image string
         """
@@ -309,10 +308,10 @@ Include a "verification_notes" field with any observations."""
 
     def _encode_array(self, image: np.ndarray) -> str:
         """Encode numpy array image to base64 string.
-        
+
         Args:
             image: Image as numpy array
-            
+
         Returns:
             Base64 encoded image string
         """
@@ -324,10 +323,10 @@ Include a "verification_notes" field with any observations."""
 
     def _get_image_media_type(self, image_path: Path) -> str:
         """Get media type for image file.
-        
+
         Args:
             image_path: Path to image file
-            
+
         Returns:
             Media type string (e.g., 'image/jpeg')
         """
@@ -343,11 +342,11 @@ Include a "verification_notes" field with any observations."""
 
     def _call_vision_api(self, base64_image: str, prompt: str) -> str:
         """Call GPT-4 Vision API synchronously.
-        
+
         Args:
             base64_image: Base64 encoded image
             prompt: Extraction prompt
-            
+
         Returns:
             API response text
         """
@@ -383,11 +382,11 @@ Include a "verification_notes" field with any observations."""
         self, base64_image: str, prompt: str
     ) -> str:
         """Call GPT-4 Vision API asynchronously.
-        
+
         Args:
             base64_image: Base64 encoded image
             prompt: Extraction prompt
-            
+
         Returns:
             API response text
         """
@@ -421,10 +420,10 @@ Include a "verification_notes" field with any observations."""
 
     def _parse_response(self, response: str) -> ExtractionResult:
         """Parse GPT-4 Vision API response into ExtractionResult.
-        
+
         Args:
             response: Raw API response text
-            
+
         Returns:
             ExtractionResult with parsed data
         """
@@ -487,11 +486,11 @@ Include a "verification_notes" field with any observations."""
         result: ExtractionResult,
     ) -> ExtractionResult:
         """Verify and potentially correct extraction results.
-        
+
         Args:
             base64_image: Base64 encoded image
             result: Initial extraction result
-            
+
         Returns:
             Verified/corrected ExtractionResult
         """
@@ -518,11 +517,11 @@ Include a "verification_notes" field with any observations."""
         result: ExtractionResult,
     ) -> ExtractionResult:
         """Verify extraction results asynchronously.
-        
+
         Args:
             base64_image: Base64 encoded image
             result: Initial extraction result
-            
+
         Returns:
             Verified/corrected ExtractionResult
         """
@@ -545,7 +544,7 @@ Include a "verification_notes" field with any observations."""
 
     def is_available(self) -> bool:
         """Check if GPT-4 Vision API is available.
-        
+
         Returns:
             True if API is accessible
         """

@@ -7,7 +7,6 @@ Requirements: 3.1, 3.2
 """
 from __future__ import annotations
 
-
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,7 +22,7 @@ logger = logging.getLogger("inec_agent.agents.processor")
 @dataclass
 class ProcessingResult:
     """Result of processing a result sheet image.
-    
+
     Attributes:
         success: Whether processing was successful
         ocr_result: OCR processing result
@@ -39,13 +38,13 @@ class ProcessingResult:
 
 class ProcessorAgent:
     """Agent for OCR processing and data extraction.
-    
+
     This agent handles:
     - Image preprocessing for optimal OCR performance
     - OCR processing using Tesseract or GPT-4 Vision
     - Data extraction from OCR output
     - Confidence scoring and quality assessment
-    
+
     Requirements: 3.1, 3.2
     """
 
@@ -58,7 +57,7 @@ class ProcessorAgent:
         enable_fallback: bool = True,
     ):
         """Initialize the processor agent.
-        
+
         Args:
             quality_threshold: Threshold for OCR engine selection
             openai_api_key: OpenAI API key for GPT-4 Vision
@@ -84,14 +83,14 @@ class ProcessorAgent:
         engine: OCREngine = OCREngine.AUTO,
     ) -> ProcessingResult:
         """Process a result sheet image.
-        
+
         This method performs OCR on the image and extracts structured
         election data from the OCR output.
-        
+
         Args:
             image_path: Path to the result sheet image
             engine: OCR engine to use (AUTO for automatic selection)
-            
+
         Returns:
             ProcessingResult with OCR and extraction results
         """
@@ -155,11 +154,11 @@ class ProcessorAgent:
         engine: OCREngine = OCREngine.AUTO,
     ) -> ProcessingResult:
         """Process a result sheet image synchronously.
-        
+
         Args:
             image_path: Path to the result sheet image
             engine: OCR engine to use (AUTO for automatic selection)
-            
+
         Returns:
             ProcessingResult with OCR and extraction results
         """
@@ -213,13 +212,13 @@ class ProcessorAgent:
         state: AgentState,
     ) -> AgentState:
         """Process the OCR and extraction steps for the workflow.
-        
+
         This method is called by the LangGraph workflow to handle
         preprocessing, OCR, and extraction for downloaded images.
-        
+
         Args:
             state: Current agent state
-            
+
         Returns:
             Updated agent state
         """
@@ -309,10 +308,10 @@ class ProcessorAgent:
 
     def _convert_vision_extraction(self, vision_result: Any) -> ExtractionResult:
         """Convert GPT-4 Vision extraction to ExtractionResult format.
-        
+
         Args:
             vision_result: Extraction result from GPT-4 Vision
-            
+
         Returns:
             ExtractionResult in standard format
         """
@@ -351,10 +350,10 @@ class ProcessorAgent:
 
     def select_ocr_engine(self, quality_score: float) -> OCREngine:
         """Select appropriate OCR engine based on image quality.
-        
+
         Args:
             quality_score: Image quality score (0-1)
-            
+
         Returns:
             Selected OCR engine
         """
@@ -364,7 +363,7 @@ class ProcessorAgent:
 
     def get_engine_status(self) -> dict[str, Any]:
         """Get status of available OCR engines.
-        
+
         Returns:
             Dictionary with engine availability status
         """

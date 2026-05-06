@@ -1,7 +1,7 @@
 """Initial schema for INEC Election Results Agent.
 
 Revision ID: 001
-Revises: 
+Revises:
 Create Date: 2024-01-01
 
 Requirements: 4.1, 4.6
