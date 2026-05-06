@@ -2,17 +2,24 @@
 
 Provides endpoints for viewing aggregated election results at ward, LGA, and state levels.
 
-Requirements: 5.1, 5.2
+Requirements: 5.1, 5.2, 6.1, 6.2, 6.3, 6.4, 6.5
 """
 
+import asyncio
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.aggregator.service import AggregationService
 from app.db.session import get_async_session
+from app.models.election import ElectionType
+from app.models.geography import State
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -77,6 +84,67 @@ def _convert_aggregation_result(agg_result) -> AggregationResponse:
     )
 
 
+@router.get("/states", response_model=list[AggregationResponse])
+async def get_all_states_aggregation(
+    election_type_id: UUID = Query(..., description="Election type UUID"),
+    session: AsyncSession = Depends(get_async_session),
+) -> list[AggregationResponse]:
+    """Get aggregated election results for all states.
+
+    Fetches aggregation data for all 36 states + FCT in parallel using
+    asyncio.gather. States with no data or failed aggregations are omitted
+    from the response.
+
+    Args:
+        election_type_id: Election type UUID
+
+    Returns:
+        List of aggregated results, one per state that has data
+
+    Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
+    """
+    # Validate that the election type exists
+    election_type_query = select(ElectionType).where(ElectionType.id == election_type_id)
+    election_type_result = await session.execute(election_type_query)
+    election_type = election_type_result.scalar_one_or_none()
+
+    if election_type is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Election type not found"
+        )
+
+    # Fetch all states
+    states_query = select(State)
+    states_result = await session.execute(states_query)
+    states = states_result.scalars().all()
+
+    # Define a coroutine that aggregates a single state with error handling
+    async def _aggregate_single_state(state: State):
+        try:
+            service = AggregationService(session)
+            return await service.aggregate_state(state.id, election_type_id)
+        except Exception as exc:
+            logger.error(
+                "Failed to aggregate state %s (%s): %s",
+                state.name,
+                state.id,
+                exc,
+            )
+            return None
+
+    # Run all state aggregations in parallel
+    tasks = [_aggregate_single_state(state) for state in states]
+    results = await asyncio.gather(*tasks)
+
+    # Filter out None results and convert to response models
+    return [
+        _convert_aggregation_result(result)
+        for result in results
+        if result is not None
+    ]
+
+
 @router.get("/election-type/{election_type_id}", response_model=AggregationResponse)
 async def get_election_type_aggregation(
     election_type_id: UUID,
@@ -114,16 +182,16 @@ async def get_ward_aggregation(
     session: AsyncSession = Depends(get_async_session),
 ) -> AggregationResponse:
     """Get aggregated election results for a ward.
-    
+
     Sums vote counts by party across all polling units in the specified ward.
-    
+
     Args:
         ward_id: Ward UUID
         election_type_id: Election type UUID
-        
+
     Returns:
         Aggregated results with party rankings and polling unit counts
-        
+
     Requirements: 5.1, 5.3, 5.4, 5.5, 5.6
     """
     service = AggregationService(session)
@@ -145,16 +213,16 @@ async def get_lga_aggregation(
     session: AsyncSession = Depends(get_async_session),
 ) -> AggregationResponse:
     """Get aggregated election results for an LGA.
-    
+
     Sums vote counts by party across all wards (and their polling units) in the LGA.
-    
+
     Args:
         lga_id: LGA UUID
         election_type_id: Election type UUID
-        
+
     Returns:
         Aggregated results with party rankings and polling unit counts
-        
+
     Requirements: 5.2, 5.3, 5.4, 5.5, 5.6
     """
     service = AggregationService(session)
@@ -176,16 +244,16 @@ async def get_state_aggregation(
     session: AsyncSession = Depends(get_async_session),
 ) -> AggregationResponse:
     """Get aggregated election results for a state.
-    
+
     Sums vote counts by party across all LGAs (and their wards/polling units) in the state.
-    
+
     Args:
         state_id: State UUID
         election_type_id: Election type UUID
-        
+
     Returns:
         Aggregated results with party rankings and polling unit counts
-        
+
     Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
     """
     service = AggregationService(session)

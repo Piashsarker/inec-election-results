@@ -172,3 +172,28 @@ export interface ExportResponse {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   downloadUrl?: string;
 }
+
+// Map-related types (Issue #11: Interactive Nigeria Map)
+
+/** Aggregation data for a single state, used by the map */
+export interface StateAggregationData {
+  stateCode: string;
+  stateName: string;
+  locationId: string;
+  electionTypeId: string;
+  electionTypeCode: string;
+  partyResults: PartyResult[];
+  totalValidVotes: number;
+  totalAccreditedVoters: number;
+  totalRejectedVotes: number;
+  totalPollingUnits: number;
+  processedPollingUnits: number;
+  flaggedPollingUnits: number;
+}
+
+/** Election type option for the selector dropdown */
+export interface ElectionTypeOption {
+  id: string;
+  name: string;
+  code: string;
+}
