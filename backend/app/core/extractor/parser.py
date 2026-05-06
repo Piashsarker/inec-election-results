@@ -8,7 +8,6 @@ Requirements: 3.2, 3.3, 3.4, 3.5
 """
 from __future__ import annotations
 
-
 import re
 from dataclasses import dataclass, field
 
@@ -18,7 +17,7 @@ from app.core.ocr.tesseract import OCRResult
 @dataclass
 class PartyVote:
     """Vote count for a political party.
-    
+
     Attributes:
         party_name: Full party name
         party_code: Party abbreviation/code
@@ -37,7 +36,7 @@ class PartyVote:
 @dataclass
 class SummaryFields:
     """Summary fields from election result sheet.
-    
+
     Attributes:
         accredited_voters: Total number of accredited voters
         valid_votes: Total number of valid votes
@@ -54,7 +53,7 @@ class SummaryFields:
 @dataclass
 class ExtractionResult:
     """Result of election data extraction.
-    
+
     Attributes:
         party_votes: List of party vote counts
         summary: Summary fields (accredited, valid, rejected)
@@ -94,13 +93,13 @@ class ExtractionResult:
 
 class ElectionDataExtractor:
     """Extracts structured election data from OCR output.
-    
+
     This class parses OCR text to identify:
     - Political party names and codes
     - Vote counts for each party
     - Summary fields (accredited voters, valid votes, rejected votes)
     - Location information (polling unit, ward, LGA, state)
-    
+
     Requirements: 3.2, 3.3, 3.4, 3.5
     """
 
@@ -168,7 +167,7 @@ class ElectionDataExtractor:
         fuzzy_match: bool = True,
     ):
         """Initialize election data extractor.
-        
+
         Args:
             min_confidence: Minimum confidence threshold for extraction
             fuzzy_match: Whether to use fuzzy matching for party names
@@ -184,17 +183,17 @@ class ElectionDataExtractor:
 
     def extract(self, ocr_result: OCRResult) -> ExtractionResult:
         """Extract election data from OCR result.
-        
+
         Steps:
         1. Identify table regions in text
         2. Extract party names using pattern matching
         3. Extract vote counts adjacent to party names
         4. Extract summary fields (accredited, valid, rejected)
         5. Calculate confidence score
-        
+
         Args:
             ocr_result: OCR result with extracted text
-            
+
         Returns:
             ExtractionResult with structured election data
         """
@@ -220,10 +219,10 @@ class ElectionDataExtractor:
 
     def extract_from_text(self, text: str) -> ExtractionResult:
         """Extract election data from raw text.
-        
+
         Args:
             text: Raw OCR text
-            
+
         Returns:
             ExtractionResult with structured election data
         """
@@ -248,10 +247,10 @@ class ElectionDataExtractor:
 
     def _extract_party_votes(self, text: str) -> list[PartyVote]:
         """Extract party names and vote counts from text.
-        
+
         Args:
             text: OCR text
-            
+
         Returns:
             List of PartyVote objects
         """
@@ -272,10 +271,10 @@ class ElectionDataExtractor:
 
     def _parse_party_line(self, line: str) -> PartyVote | None:
         """Parse a single line for party and vote count.
-        
+
         Args:
             line: Single line of text
-            
+
         Returns:
             PartyVote if found, None otherwise
         """
@@ -321,10 +320,10 @@ class ElectionDataExtractor:
 
     def _extract_with_patterns(self, text: str) -> list[PartyVote]:
         """Extract party votes using regex patterns on full text.
-        
+
         Args:
             text: Full OCR text
-            
+
         Returns:
             List of PartyVote objects
         """
@@ -358,10 +357,10 @@ class ElectionDataExtractor:
 
     def _extract_summary_fields(self, text: str) -> SummaryFields:
         """Extract summary fields from text.
-        
+
         Args:
             text: OCR text
-            
+
         Returns:
             SummaryFields with extracted values
         """
@@ -396,7 +395,7 @@ class ElectionDataExtractor:
 
     def _extract_location_info(self, text: str, result: ExtractionResult) -> None:
         """Extract location information from text.
-        
+
         Args:
             text: OCR text
             result: ExtractionResult to update
@@ -455,11 +454,11 @@ class ElectionDataExtractor:
         ocr_result: OCRResult,
     ) -> float:
         """Calculate overall extraction confidence.
-        
+
         Args:
             result: Extraction result
             ocr_result: Original OCR result
-            
+
         Returns:
             Confidence score (0-1)
         """
@@ -503,10 +502,10 @@ class ElectionDataExtractor:
 
     def _calculate_basic_confidence(self, result: ExtractionResult) -> float:
         """Calculate basic confidence without OCR result.
-        
+
         Args:
             result: Extraction result
-            
+
         Returns:
             Confidence score (0-1)
         """
@@ -535,7 +534,7 @@ class ElectionDataExtractor:
 
     def _add_warnings(self, result: ExtractionResult) -> None:
         """Add warnings for potential extraction issues.
-        
+
         Args:
             result: ExtractionResult to update
         """

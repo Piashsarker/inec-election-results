@@ -7,7 +7,6 @@ Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8
 """
 from __future__ import annotations
 
-
 import logging
 from dataclasses import dataclass
 
@@ -73,10 +72,10 @@ class NavigationError(Exception):
 
 class PortalNavigator:
     """Navigates the INEC IREV portal hierarchy.
-    
+
     This class provides methods to navigate through each level of the
     INEC portal hierarchy and extract available options.
-    
+
     Requirements:
     - 1.1: Connect to INEC portal
     - 1.2: Retrieve election types
@@ -89,7 +88,7 @@ class PortalNavigator:
 
     def __init__(self, browser_manager: BrowserManager):
         """Initialize the portal navigator.
-        
+
         Args:
             browser_manager: BrowserManager instance for web requests
         """
@@ -99,10 +98,10 @@ class PortalNavigator:
 
     async def get_election_types(self) -> list[ElectionType]:
         """Retrieve available election types from portal.
-        
+
         Returns:
             List of ElectionType objects
-            
+
         Raises:
             NavigationError: If retrieval fails
         """
@@ -137,13 +136,13 @@ class PortalNavigator:
 
     async def get_states(self, election_type: str) -> list[State]:
         """Retrieve states for a given election type.
-        
+
         Args:
             election_type: Election type code
-            
+
         Returns:
             List of State objects (36 states + FCT)
-            
+
         Raises:
             NavigationError: If retrieval fails
         """
@@ -189,14 +188,14 @@ class PortalNavigator:
 
     async def get_lgas(self, election_type: str, state: str) -> list[LGA]:
         """Retrieve LGAs for a given state.
-        
+
         Args:
             election_type: Election type code
             state: State code
-            
+
         Returns:
             List of LGA objects
-            
+
         Raises:
             NavigationError: If retrieval fails
         """
@@ -230,15 +229,15 @@ class PortalNavigator:
 
     async def get_wards(self, election_type: str, state: str, lga: str) -> list[Ward]:
         """Retrieve wards for a given LGA.
-        
+
         Args:
             election_type: Election type code
             state: State code
             lga: LGA code
-            
+
         Returns:
             List of Ward objects
-            
+
         Raises:
             NavigationError: If retrieval fails
         """
@@ -274,16 +273,16 @@ class PortalNavigator:
         self, election_type: str, state: str, lga: str, ward: str
     ) -> list[PollingUnit]:
         """Retrieve polling units for a given ward.
-        
+
         Args:
             election_type: Election type code
             state: State code
             lga: LGA code
             ward: Ward code
-            
+
         Returns:
             List of PollingUnit objects with result URLs
-            
+
         Raises:
             NavigationError: If retrieval fails
         """

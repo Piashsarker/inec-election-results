@@ -8,10 +8,9 @@ Requirements: 3.1
 """
 from __future__ import annotations
 
-
 import logging
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 import numpy as np
@@ -23,7 +22,7 @@ from app.core.ocr.vision import ExtractionResult, GPT4VisionEngine
 logger = logging.getLogger(__name__)
 
 
-class OCREngine(str, Enum):
+class OCREngine(StrEnum):
     """Available OCR engines."""
 
     TESSERACT = "tesseract"
@@ -34,7 +33,7 @@ class OCREngine(str, Enum):
 @dataclass
 class OCROrchestrationResult:
     """Result from OCR orchestration.
-    
+
     Attributes:
         text: Extracted text (from Tesseract)
         extraction: Structured extraction result (from GPT-4 Vision or parsed)
@@ -72,16 +71,16 @@ class OCROrchestrationResult:
 
 class OCROrchestrator:
     """Orchestrates OCR processing with intelligent engine selection.
-    
+
     This class coordinates between Tesseract and GPT-4 Vision engines,
     selecting the appropriate engine based on image quality assessment.
     It also handles preprocessing and fallback logic.
-    
+
     Engine Selection Logic:
     - High quality images (score >= threshold) -> Tesseract (faster, cheaper)
     - Low quality/handwritten images -> GPT-4 Vision (better understanding)
     - If primary engine fails -> Fallback to alternative engine
-    
+
     Requirements: 3.1
     """
 
@@ -96,7 +95,7 @@ class OCROrchestrator:
         preprocess_images: bool = True,
     ):
         """Initialize OCR orchestrator.
-        
+
         Args:
             quality_threshold: Threshold for high/low quality classification
             tesseract_lang: Tesseract language code
@@ -150,12 +149,12 @@ class OCROrchestrator:
         extract_structured: bool = True,
     ) -> OCROrchestrationResult:
         """Process image with OCR orchestration.
-        
+
         Args:
             image_path: Path to the image file
             engine: Which OCR engine to use (AUTO for automatic selection)
             extract_structured: Whether to extract structured data
-            
+
         Returns:
             OCROrchestrationResult with extracted data
         """
@@ -217,12 +216,12 @@ class OCROrchestrator:
         extract_structured: bool = True,
     ) -> OCROrchestrationResult:
         """Process image asynchronously with OCR orchestration.
-        
+
         Args:
             image_path: Path to the image file
             engine: Which OCR engine to use (AUTO for automatic selection)
             extract_structured: Whether to extract structured data
-            
+
         Returns:
             OCROrchestrationResult with extracted data
         """
@@ -283,12 +282,12 @@ class OCROrchestrator:
         extract_structured: bool = True,
     ) -> OCROrchestrationResult:
         """Process numpy array image with OCR orchestration.
-        
+
         Args:
             image: Image as numpy array
             engine: Which OCR engine to use (AUTO for automatic selection)
             extract_structured: Whether to extract structured data
-            
+
         Returns:
             OCROrchestrationResult with extracted data
         """
@@ -316,10 +315,10 @@ class OCROrchestrator:
 
     def _select_engine(self, quality_score: QualityScore) -> OCREngine:
         """Select OCR engine based on image quality.
-        
+
         Args:
             quality_score: Image quality assessment
-            
+
         Returns:
             Selected OCR engine
         """
@@ -329,10 +328,10 @@ class OCROrchestrator:
 
     def _get_fallback_engine(self, primary: OCREngine) -> OCREngine:
         """Get fallback engine for the given primary engine.
-        
+
         Args:
             primary: Primary OCR engine
-            
+
         Returns:
             Fallback OCR engine
         """
@@ -348,13 +347,13 @@ class OCROrchestrator:
         extract_structured: bool,
     ) -> OCROrchestrationResult:
         """Process image with specified engine.
-        
+
         Args:
             processed: Preprocessed image
             image_path: Original image path
             engine: OCR engine to use
             extract_structured: Whether to extract structured data
-            
+
         Returns:
             OCROrchestrationResult
         """
@@ -398,13 +397,13 @@ class OCROrchestrator:
         extract_structured: bool,
     ) -> OCROrchestrationResult:
         """Process image with specified engine asynchronously.
-        
+
         Args:
             processed: Preprocessed image
             image_path: Original image path
             engine: OCR engine to use
             extract_structured: Whether to extract structured data
-            
+
         Returns:
             OCROrchestrationResult
         """
@@ -450,12 +449,12 @@ class OCROrchestrator:
         extract_structured: bool,
     ) -> OCROrchestrationResult:
         """Process numpy array with specified engine.
-        
+
         Args:
             processed: Preprocessed image
             engine: OCR engine to use
             extract_structured: Whether to extract structured data
-            
+
         Returns:
             OCROrchestrationResult
         """
@@ -490,7 +489,7 @@ class OCROrchestrator:
 
     def get_engine_status(self) -> dict:
         """Get status of available OCR engines.
-        
+
         Returns:
             Dictionary with engine availability status
         """

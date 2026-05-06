@@ -6,7 +6,6 @@ Requirements: 8.1, 8.2, 8.3, 8.4
 """
 from __future__ import annotations
 
-
 import os
 import uuid
 from datetime import datetime
@@ -65,16 +64,16 @@ async def create_csv_export(
     session: AsyncSession = Depends(get_async_session),
 ) -> ExportResponse:
     """Start a CSV export generation task.
-    
+
     Queues a background task to generate a CSV file with election results
     based on the provided filters.
-    
+
     Args:
         request: Export configuration with optional filters
-        
+
     Returns:
         Export ID for tracking and download
-        
+
     Requirements: 8.1, 8.3
     """
     export_id = str(uuid.uuid4())
@@ -109,17 +108,17 @@ async def create_json_export(
     session: AsyncSession = Depends(get_async_session),
 ) -> ExportResponse:
     """Start a JSON export generation task.
-    
+
     Queues a background task to generate a JSON file with election results
     based on the provided filters. Optionally aggregates results at ward,
     LGA, or state level.
-    
+
     Args:
         request: Export configuration with optional filters and aggregation level
-        
+
     Returns:
         Export ID for tracking and download
-        
+
     Requirements: 8.2, 8.3, 8.4
     """
     export_id = str(uuid.uuid4())
@@ -162,13 +161,13 @@ async def get_export_status(
     export_id: str,
 ) -> ExportStatusResponse:
     """Check the status of an export generation task.
-    
+
     Args:
         export_id: Export UUID
-        
+
     Returns:
         Export status and file information if complete
-        
+
     Requirements: 8.1, 8.2
     """
     export_dir = os.path.join(settings.scraping.storage_path, "exports")
@@ -211,14 +210,14 @@ async def download_export(
     format: str | None = Query(None, description="File format (csv or json)"),
 ) -> FileResponse:
     """Download a generated export file.
-    
+
     Args:
         export_id: Export UUID
         format: Optional format hint (csv or json)
-        
+
     Returns:
         File download response
-        
+
     Requirements: 8.1, 8.2, 8.4
     """
     export_dir = os.path.join(settings.scraping.storage_path, "exports")

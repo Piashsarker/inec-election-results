@@ -7,15 +7,14 @@ Requirements: 6.1, 6.5, 7.6
 """
 from __future__ import annotations
 
-
-from enum import Enum
+from enum import StrEnum
 from functools import lru_cache
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class LogLevel(str, Enum):
+class LogLevel(StrEnum):
     """Supported log levels (Requirement 7.6)."""
 
     DEBUG = "DEBUG"
@@ -24,7 +23,7 @@ class LogLevel(str, Enum):
     ERROR = "ERROR"
 
 
-class Environment(str, Enum):
+class Environment(StrEnum):
     """Application environment types."""
 
     DEVELOPMENT = "development"
@@ -342,10 +341,10 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     """Get cached application settings instance.
-    
+
     Uses LRU cache to ensure settings are loaded only once
     and reused across the application.
-    
+
     Returns:
         Settings: Application settings instance
     """

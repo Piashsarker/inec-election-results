@@ -6,7 +6,6 @@ Requirements: 4.6, 3.6
 """
 from __future__ import annotations
 
-
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -73,13 +72,13 @@ async def get_results(
     session: AsyncSession = Depends(get_async_session),
 ) -> list[ElectionResultResponse]:
     """Get election results with optional filtering.
-    
+
     Args:
         election_type_id: Filter by election type
         polling_unit_id: Filter by polling unit
         limit: Maximum results to return
         offset: Number of results to skip
-        
+
     Returns:
         List of election results
     """
@@ -104,10 +103,10 @@ async def get_result(
     session: AsyncSession = Depends(get_async_session),
 ) -> ElectionResultResponse:
     """Get a single election result by ID.
-    
+
     Args:
         result_id: Election result UUID
-        
+
     Returns:
         Election result with party results
     """
@@ -131,11 +130,11 @@ async def flag_result(
     session: AsyncSession = Depends(get_async_session),
 ) -> FlaggedResultResponse:
     """Flag a result for manual review.
-    
+
     Args:
         result_id: Election result UUID
         request: Flag reason
-        
+
     Returns:
         Created flagged result record
     """

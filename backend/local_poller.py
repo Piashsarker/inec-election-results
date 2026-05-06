@@ -116,13 +116,13 @@ class LocalScraper:
         limit: int = 10,
     ) -> list[dict]:
         """Scrape election results from INEC portal.
-        
+
         Args:
             election_type: Type of election (presidential, gubernatorial, etc.)
             state: Target state (optional)
             lga: Target LGA (optional)
             limit: Maximum number of polling units to scrape
-            
+
         Returns:
             List of extracted results
         """

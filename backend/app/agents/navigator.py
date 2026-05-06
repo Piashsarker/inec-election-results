@@ -7,7 +7,6 @@ Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 2.1
 """
 from __future__ import annotations
 
-
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -31,7 +30,7 @@ logger = logging.getLogger("inec_agent.agents.navigator")
 @dataclass
 class NavigationResult:
     """Result of a navigation operation.
-    
+
     Attributes:
         success: Whether navigation was successful
         polling_unit: The polling unit navigated to
@@ -47,12 +46,12 @@ class NavigationResult:
 
 class NavigatorAgent:
     """Agent for navigating the INEC portal and downloading result sheets.
-    
+
     This agent handles:
     - Navigation through the portal hierarchy (Election Type → State → LGA → Ward → PU)
     - Downloading result sheet images for polling units
     - Error handling and logging for navigation failures
-    
+
     Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 2.1
     """
 
@@ -62,7 +61,7 @@ class NavigatorAgent:
         storage_path: str | None = None,
     ):
         """Initialize the navigator agent.
-        
+
         Args:
             browser_manager: Browser manager for web requests
             storage_path: Path to store downloaded result sheets
@@ -78,10 +77,10 @@ class NavigatorAgent:
 
     async def get_election_types(self) -> list[ElectionType]:
         """Retrieve available election types from the portal.
-        
+
         Returns:
             List of ElectionType objects
-            
+
         Raises:
             NavigationError: If retrieval fails
         """
@@ -90,13 +89,13 @@ class NavigatorAgent:
 
     async def get_states(self, election_type: str) -> list[State]:
         """Retrieve states for an election type.
-        
+
         Args:
             election_type: Election type code
-            
+
         Returns:
             List of State objects (36 states + FCT)
-            
+
         Raises:
             NavigationError: If retrieval fails
         """
@@ -105,14 +104,14 @@ class NavigatorAgent:
 
     async def get_lgas(self, election_type: str, state: str) -> list[LGA]:
         """Retrieve LGAs for a state.
-        
+
         Args:
             election_type: Election type code
             state: State code
-            
+
         Returns:
             List of LGA objects
-            
+
         Raises:
             NavigationError: If retrieval fails
         """
@@ -121,15 +120,15 @@ class NavigatorAgent:
 
     async def get_wards(self, election_type: str, state: str, lga: str) -> list[Ward]:
         """Retrieve wards for an LGA.
-        
+
         Args:
             election_type: Election type code
             state: State code
             lga: LGA code
-            
+
         Returns:
             List of Ward objects
-            
+
         Raises:
             NavigationError: If retrieval fails
         """
@@ -144,16 +143,16 @@ class NavigatorAgent:
         ward: str,
     ) -> list[PollingUnit]:
         """Retrieve polling units for a ward.
-        
+
         Args:
             election_type: Election type code
             state: State code
             lga: LGA code
             ward: Ward code
-            
+
         Returns:
             List of PollingUnit objects with result URLs
-            
+
         Raises:
             NavigationError: If retrieval fails
         """
@@ -169,17 +168,17 @@ class NavigatorAgent:
         polling_unit: PollingUnit,
     ) -> NavigationResult:
         """Navigate to a polling unit and download its result sheet.
-        
+
         This method combines navigation and download into a single operation,
         handling errors and logging appropriately.
-        
+
         Args:
             election_type: Election type code
             state: State code
             lga: LGA code
             ward: Ward code
             polling_unit: Polling unit to process
-            
+
         Returns:
             NavigationResult with download status
         """
@@ -256,13 +255,13 @@ class NavigatorAgent:
         state: AgentState,
     ) -> AgentState:
         """Process the navigate and download steps for the workflow.
-        
+
         This method is called by the LangGraph workflow to handle
         navigation and downloading for a polling unit.
-        
+
         Args:
             state: Current agent state
-            
+
         Returns:
             Updated agent state
         """
@@ -331,16 +330,16 @@ class NavigatorAgent:
         target_ward: str | None = None,
     ) -> list[dict[str, Any]]:
         """Discover all polling units matching the given criteria.
-        
+
         This method navigates through the portal hierarchy to discover
         all polling units that match the specified filters.
-        
+
         Args:
             election_type: Target election type (None = all)
             target_state: Target state (None = all)
             target_lga: Target LGA (None = all)
             target_ward: Target ward (None = all)
-            
+
         Returns:
             List of polling unit dictionaries with location info
         """
@@ -428,7 +427,7 @@ class NavigatorAgent:
 
     def get_download_progress(self) -> dict[str, int]:
         """Get download progress statistics.
-        
+
         Returns:
             Dictionary with total, completed, and failed counts
         """

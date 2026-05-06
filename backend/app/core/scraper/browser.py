@@ -10,7 +10,6 @@ Requirements: 1.7, 6.5, 7.3
 """
 from __future__ import annotations
 
-
 import asyncio
 import logging
 from contextlib import asynccontextmanager
@@ -133,7 +132,7 @@ class BrowserManager:
         )
 
     @classmethod
-    def from_settings(cls) -> "BrowserManager":
+    def from_settings(cls) -> BrowserManager:
         """Create a BrowserManager instance from application settings.
 
         Returns:
@@ -148,7 +147,7 @@ class BrowserManager:
             timeout=settings.scraping.download_timeout_seconds * 1000,
         )
 
-    async def __aenter__(self) -> "BrowserManager":
+    async def __aenter__(self) -> BrowserManager:
         """Async context manager entry - initialize browser resources."""
         await self.start()
         return self
