@@ -15,6 +15,7 @@ const navItems = [
   { href: '/elections', label: 'Elections', icon: '🗳️' },
   { href: '/results', label: 'Results', icon: '📋' },
   { href: '/aggregation', label: 'Aggregation', icon: '📈' },
+  { href: '/map', label: 'Map', icon: '🗺️' },
 ];
 
 function Navigation() {
