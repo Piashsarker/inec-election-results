@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
+import { MapSection } from '@/components/map/MapSection';
 
 interface DashboardStats {
   totalResults: number;
@@ -44,13 +44,25 @@ const quickActions: QuickAction[] = [
   },
 ];
 
-function StatCard({ title, value, icon, trend }: { title: string; value: string | number; icon: string; trend?: string }) {
+function StatCard({
+  title,
+  value,
+  icon,
+  trend,
+}: {
+  title: string;
+  value: string | number;
+  icon: string;
+  trend?: string;
+}) {
   return (
     <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-2xl font-bold text-foreground mt-1">{value.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-foreground mt-1">
+            {value.toLocaleString()}
+          </p>
           {trend && <p className="text-xs text-green-600 mt-1">{trend}</p>}
         </div>
         <span className="text-3xl">{icon}</span>
@@ -83,7 +95,6 @@ function JobStatusWidget() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulated job data - in production, fetch from API
     setJobs([]);
     setLoading(false);
   }, []);
@@ -132,11 +143,8 @@ export default function HomePage() {
     flaggedResults: 0,
     activeJobs: 0,
   });
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // In production, fetch real stats from API
-    // For now, set placeholder values
     setStats({
       totalResults: 0,
       totalPollingUnits: 176846,
@@ -144,40 +152,37 @@ export default function HomePage() {
       flaggedResults: 0,
       activeJobs: 0,
     });
-    setLoading(false);
   }, []);
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground mt-2">
           AI-powered election results extraction and aggregation system
         </p>
       </div>
 
+      {/* Election Results Map — primary visual element */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xl font-semibold text-foreground">Election Results Map</h2>
+          <Link
+            href="/map"
+            className="text-sm text-primary hover:underline font-medium"
+          >
+            View Full Map →
+          </Link>
+        </div>
+        <MapSection compact showHeader={false} />
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard
-          title="Total Results"
-          value={stats.totalResults}
-          icon="📊"
-        />
-        <StatCard
-          title="Polling Units"
-          value={stats.totalPollingUnits}
-          icon="🏛️"
-        />
-        <StatCard
-          title="Processed Today"
-          value={stats.processedToday}
-          icon="✅"
-        />
-        <StatCard
-          title="Flagged for Review"
-          value={stats.flaggedResults}
-          icon="⚠️"
-        />
+        <StatCard title="Total Results" value={stats.totalResults} icon="📊" />
+        <StatCard title="Polling Units" value={stats.totalPollingUnits} icon="🏛️" />
+        <StatCard title="Processed Today" value={stats.processedToday} icon="✅" />
+        <StatCard title="Flagged for Review" value={stats.flaggedResults} icon="⚠️" />
       </div>
 
       {/* Quick Actions */}
