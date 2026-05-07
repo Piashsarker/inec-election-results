@@ -156,6 +156,85 @@ function generateStateData(
   };
 }
 
+/** Aggregated election-type-level data for the hero section */
+export interface DemoElectionTypeAggregation {
+  electionTypeName: string;
+  electionTypeCode: string;
+  partyResults: {
+    partyName: string;
+    partyCode: string;
+    totalVotes: number;
+    percentage: number;
+    rank: number;
+  }[];
+  totalValidVotes: number;
+  totalAccreditedVoters: number;
+  totalRejectedVotes: number;
+  totalPollingUnits: number;
+  processedPollingUnits: number;
+}
+
+/**
+ * Generate election-type-level aggregation from demo state data.
+ * Sums party votes across all states and ranks parties by total votes.
+ */
+export function generateDemoElectionTypeAggregation(
+  electionTypeId: string
+): DemoElectionTypeAggregation {
+  const stateMap = generateDemoData(electionTypeId);
+  const electionType = DEMO_ELECTION_TYPES.find((t) => t.id === electionTypeId);
+
+  // Accumulate party votes across all states
+  const partyTotals = new Map<string, { partyName: string; partyCode: string; totalVotes: number }>();
+  let totalValidVotes = 0;
+  let totalAccreditedVoters = 0;
+  let totalRejectedVotes = 0;
+  let totalPollingUnits = 0;
+  let processedPollingUnits = 0;
+
+  for (const stateData of stateMap.values()) {
+    totalValidVotes += stateData.totalValidVotes;
+    totalAccreditedVoters += stateData.totalAccreditedVoters;
+    totalRejectedVotes += stateData.totalRejectedVotes;
+    totalPollingUnits += stateData.totalPollingUnits;
+    processedPollingUnits += stateData.processedPollingUnits;
+
+    for (const pr of stateData.partyResults) {
+      const existing = partyTotals.get(pr.partyCode);
+      if (existing) {
+        existing.totalVotes += pr.voteCount;
+      } else {
+        partyTotals.set(pr.partyCode, {
+          partyName: pr.partyName,
+          partyCode: pr.partyCode,
+          totalVotes: pr.voteCount,
+        });
+      }
+    }
+  }
+
+  // Sort by total votes descending and assign ranks + percentages
+  const sorted = Array.from(partyTotals.values()).sort((a, b) => b.totalVotes - a.totalVotes);
+  const partyResults = sorted.map((p, idx) => ({
+    partyName: p.partyName,
+    partyCode: p.partyCode,
+    totalVotes: p.totalVotes,
+    percentage: totalValidVotes > 0 ? +((p.totalVotes / totalValidVotes) * 100).toFixed(1) : 0,
+    rank: idx + 1,
+  }));
+
+  return {
+    electionTypeName: electionType?.name || 'Presidential',
+    electionTypeCode: electionType?.code || 'presidential',
+    partyResults,
+    totalValidVotes,
+    totalAccreditedVoters,
+    totalRejectedVotes,
+    totalPollingUnits,
+    processedPollingUnits,
+  };
+}
+
 /**
  * Generate demo aggregation data for all states for a given election type.
  */

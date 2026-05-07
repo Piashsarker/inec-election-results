@@ -5,7 +5,7 @@
 
 /** Party code to hex color mapping */
 export const PARTY_COLORS: Record<string, string> = {
-  APC: '#008751', // Green (Nigeria flag green)
+  APC: '#004D2B', // Dark green
   PDP: '#E31B23', // Red
   LP: '#5B9BD5', // Light blue
   NNPP: '#FF8C00', // Orange

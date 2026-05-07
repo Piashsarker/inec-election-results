@@ -19,11 +19,30 @@ interface MapSectionProps {
   className?: string;
   /** When true, constrains map height for embedded usage */
   compact?: boolean;
+  /** Externally controlled election type ID (lifts state to parent) */
+  externalElectionTypeId?: string | null;
+  /** Callback when user changes election type via the selector */
+  onElectionTypeChange?: (id: string) => void;
+  /** Pre-fetched election types from parent (avoids duplicate fetch) */
+  externalElectionTypes?: ElectionTypeOption[];
+  /** Whether demo data mode is active (controlled by parent) */
+  externalUsingDemoData?: boolean;
 }
 
-export function MapSection({ showHeader = true, className = '', compact = false }: MapSectionProps) {
-  const [electionTypes, setElectionTypes] = useState<ElectionTypeOption[]>([]);
-  const [selectedElectionTypeId, setSelectedElectionTypeId] = useState<string | null>(null);
+export function MapSection({
+  showHeader = true,
+  className = '',
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  compact = false,
+  externalElectionTypeId,
+  onElectionTypeChange,
+  externalElectionTypes,
+  externalUsingDemoData,
+}: MapSectionProps) {
+  const isControlled = externalElectionTypeId !== undefined;
+
+  const [internalElectionTypes, setInternalElectionTypes] = useState<ElectionTypeOption[]>([]);
+  const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null);
   const [stateAggregations, setStateAggregations] = useState<Map<string, StateAggregationData>>(
     new Map()
   );
@@ -35,30 +54,42 @@ export function MapSection({ showHeader = true, className = '', compact = false 
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [usingDemoData, setUsingDemoData] = useState<boolean>(false);
+  const [internalUsingDemoData, setInternalUsingDemoData] = useState<boolean>(false);
+
+  // Resolve controlled vs uncontrolled state
+  const electionTypes = isControlled
+    ? externalElectionTypes ?? internalElectionTypes
+    : internalElectionTypes;
+  const selectedElectionTypeId = isControlled ? externalElectionTypeId : internalSelectedId;
+  const usingDemoData = isControlled
+    ? externalUsingDemoData ?? internalUsingDemoData
+    : internalUsingDemoData;
 
   // Fetch election types on mount — fall back to demo data if API unavailable
+  // Skip if parent is controlling election type state
   useEffect(() => {
+    if (isControlled) return;
+
     async function fetchElectionTypes() {
       try {
         const types = (await api.getElectionTypes()) as ElectionTypeOption[];
-        setElectionTypes(types);
+        setInternalElectionTypes(types);
         const presidential = types.find((t) => t.code === 'presidential');
         if (presidential) {
-          setSelectedElectionTypeId(presidential.id);
+          setInternalSelectedId(presidential.id);
         } else if (types.length > 0) {
-          setSelectedElectionTypeId(types[0].id);
+          setInternalSelectedId(types[0].id);
         }
       } catch {
         // API unavailable — use demo data
         console.info('API unavailable, using demo data');
-        setUsingDemoData(true);
-        setElectionTypes(DEMO_ELECTION_TYPES);
-        setSelectedElectionTypeId(DEMO_ELECTION_TYPES[0].id);
+        setInternalUsingDemoData(true);
+        setInternalElectionTypes(DEMO_ELECTION_TYPES);
+        setInternalSelectedId(DEMO_ELECTION_TYPES[0].id);
       }
     }
     fetchElectionTypes();
-  }, []);
+  }, [isControlled]);
 
   // Fetch state aggregations when election type changes
   useEffect(() => {
@@ -94,13 +125,13 @@ export function MapSection({ showHeader = true, className = '', compact = false 
           console.info('No aggregation data from API, using demo data for preview');
           const demoMap = generateDemoData(selectedElectionTypeId!);
           setStateAggregations(demoMap);
-          setUsingDemoData(true);
+          if (!isControlled) setInternalUsingDemoData(true);
         } else {
           setStateAggregations(aggregationMap);
         }
       } catch {
         console.info('Aggregation API failed, falling back to demo data');
-        setUsingDemoData(true);
+        if (!isControlled) setInternalUsingDemoData(true);
         const demoMap = generateDemoData(selectedElectionTypeId!);
         setStateAggregations(demoMap);
         setError(null);
@@ -109,7 +140,7 @@ export function MapSection({ showHeader = true, className = '', compact = false 
       }
     }
     fetchAggregations();
-  }, [selectedElectionTypeId, usingDemoData]);
+  }, [selectedElectionTypeId, usingDemoData, isControlled]);
 
   const handleStateHover = useCallback(
     (stateCode: string | null, event?: React.MouseEvent) => {
@@ -138,8 +169,12 @@ export function MapSection({ showHeader = true, className = '', compact = false 
   }, []);
 
   const handleElectionTypeSelect = useCallback((id: string) => {
-    setSelectedElectionTypeId(id);
-  }, []);
+    if (isControlled && onElectionTypeChange) {
+      onElectionTypeChange(id);
+    } else {
+      setInternalSelectedId(id);
+    }
+  }, [isControlled, onElectionTypeChange]);
 
   const handleDetailClose = useCallback(() => {
     setSelectedStateCode(null);
@@ -169,11 +204,6 @@ export function MapSection({ showHeader = true, className = '', compact = false 
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               Election Results Map
             </h1>
-            {usingDemoData && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                Showing demo data — connect backend for live results
-              </p>
-            )}
           </div>
           <ElectionTypeSelector
             electionTypes={electionTypes}
@@ -186,13 +216,7 @@ export function MapSection({ showHeader = true, className = '', compact = false 
 
       {!showHeader && (
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            {usingDemoData && (
-              <span className="text-xs text-amber-600 dark:text-amber-400">
-                Demo data
-              </span>
-            )}
-          </div>
+          <div className="flex items-center gap-3" />
           <ElectionTypeSelector
             electionTypes={electionTypes}
             selectedId={selectedElectionTypeId}

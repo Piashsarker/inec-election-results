@@ -1,8 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MapSection } from '@/components/map/MapSection';
+import { ElectionHero } from '@/components/dashboard/ElectionHero';
+import { api } from '@/lib/api';
+import { DEMO_ELECTION_TYPES } from '@/lib/demo-map-data';
+import { ElectionTypeOption } from '@/types';
 
 interface DashboardStats {
   totalResults: number;
@@ -136,6 +140,11 @@ function JobStatusWidget() {
 }
 
 export default function HomePage() {
+  // Shared election type state (lifted from MapSection)
+  const [electionTypes, setElectionTypes] = useState<ElectionTypeOption[]>([]);
+  const [selectedElectionTypeId, setSelectedElectionTypeId] = useState<string | null>(null);
+  const [usingDemoData, setUsingDemoData] = useState<boolean>(false);
+
   const [stats, setStats] = useState<DashboardStats>({
     totalResults: 0,
     totalPollingUnits: 0,
@@ -143,6 +152,28 @@ export default function HomePage() {
     flaggedResults: 0,
     activeJobs: 0,
   });
+
+  // Fetch election types on mount
+  useEffect(() => {
+    async function fetchElectionTypes() {
+      try {
+        const types = (await api.getElectionTypes()) as ElectionTypeOption[];
+        setElectionTypes(types);
+        const presidential = types.find((t) => t.code === 'presidential');
+        if (presidential) {
+          setSelectedElectionTypeId(presidential.id);
+        } else if (types.length > 0) {
+          setSelectedElectionTypeId(types[0].id);
+        }
+      } catch {
+        console.info('API unavailable, using demo data');
+        setUsingDemoData(true);
+        setElectionTypes(DEMO_ELECTION_TYPES);
+        setSelectedElectionTypeId(DEMO_ELECTION_TYPES[0].id);
+      }
+    }
+    fetchElectionTypes();
+  }, []);
 
   useEffect(() => {
     setStats({
@@ -154,14 +185,26 @@ export default function HomePage() {
     });
   }, []);
 
+  const handleElectionTypeChange = useCallback((id: string) => {
+    setSelectedElectionTypeId(id);
+  }, []);
+
+  // Derive the selected election type name for the hero
+  const selectedElectionTypeName =
+    electionTypes.find((t) => t.id === selectedElectionTypeId)?.name || 'Presidential';
+
   return (
     <main className="container mx-auto px-4 py-8">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground mt-2">
-          AI-powered election results extraction and aggregation system
-        </p>
       </div>
+
+      {/* Election Results Hero Section — top contestants */}
+      <ElectionHero
+        electionTypeId={selectedElectionTypeId}
+        electionTypeName={selectedElectionTypeName}
+        usingDemoData={usingDemoData}
+      />
 
       {/* Election Results Map — primary visual element */}
       <div className="mb-8">
@@ -174,7 +217,14 @@ export default function HomePage() {
             View Full Map →
           </Link>
         </div>
-        <MapSection compact showHeader={false} />
+        <MapSection
+          compact
+          showHeader={false}
+          externalElectionTypeId={selectedElectionTypeId}
+          onElectionTypeChange={handleElectionTypeChange}
+          externalElectionTypes={electionTypes}
+          externalUsingDemoData={usingDemoData}
+        />
       </div>
 
       {/* Stats Grid */}

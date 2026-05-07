@@ -51,7 +51,10 @@ export function getStateFillColor(aggregation: StateAggregationData | null): str
 
   const baseColor = PARTY_COLORS[leadingParty.partyCode] ?? DEFAULT_PARTY_COLOR;
   const voteSharePercent = leadingParty.percentage;
-  const intensity = clamp((voteSharePercent - 30) / 50, 0.3, 1.0);
+
+  // Use a wider intensity range for darker base colors (like APC dark green)
+  // so even low vote-share states show a visible tint
+  const intensity = clamp((voteSharePercent - 20) / 40, 0.45, 1.0);
 
   return applyIntensity(baseColor, intensity);
 }
