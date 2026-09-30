@@ -8,6 +8,9 @@ VPS_HOST="160.191.162.101"
 VPS_USER="root"
 APP_DIR="/opt/inec-election-results"
 
+# Docker Compose command (supports both plugin and standalone)
+COMPOSE_CMD="docker compose"
+
 echo "🇳🇬 INEC Election Results Agent - VPS Deployment"
 echo "=================================================="
 echo "Target: $VPS_USER@$VPS_HOST"
@@ -27,9 +30,9 @@ if ! command -v docker &> /dev/null; then
     rm get-docker.sh
 fi
 
-# Install Docker Compose if not present
-if ! command -v docker-compose &> /dev/null; then
-    echo "Installing Docker Compose..."
+# Install Docker Compose plugin if not present
+if ! docker compose version &> /dev/null; then
+    echo "Installing Docker Compose plugin..."
     apt-get install -y docker-compose-plugin
 fi
 
@@ -61,10 +64,10 @@ ssh $VPS_USER@$VPS_HOST << ENDSSH
 cd $APP_DIR
 
 # Stop existing containers
-docker compose -f docker-compose.prod.yml down 2>/dev/null || true
+$COMPOSE_CMD -f docker-compose.prod.yml down 2>/dev/null || true
 
 # Build and start containers
-docker compose -f docker-compose.prod.yml up -d --build
+$COMPOSE_CMD -f docker-compose.prod.yml up -d --build
 
 # Wait for services to be ready
 echo "Waiting for services to start..."
@@ -74,7 +77,7 @@ sleep 10
 docker exec inec_backend alembic upgrade head
 
 # Show status
-docker compose -f docker-compose.prod.yml ps
+$COMPOSE_CMD -f docker-compose.prod.yml ps
 
 echo ""
 echo "✅ Deployment complete!"

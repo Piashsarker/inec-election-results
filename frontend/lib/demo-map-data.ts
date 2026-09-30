@@ -192,7 +192,7 @@ export function generateDemoElectionTypeAggregation(
   let totalPollingUnits = 0;
   let processedPollingUnits = 0;
 
-  for (const stateData of stateMap.values()) {
+  for (const stateData of Array.from(stateMap.values())) {
     totalValidVotes += stateData.totalValidVotes;
     totalAccreditedVoters += stateData.totalAccreditedVoters;
     totalRejectedVotes += stateData.totalRejectedVotes;

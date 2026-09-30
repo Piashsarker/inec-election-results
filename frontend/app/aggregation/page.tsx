@@ -7,11 +7,6 @@ import { AggregatedResult, PartyResult } from '@/types';
 
 type AggregationLevel = 'ward' | 'lga' | 'state';
 
-interface AggregationFilters {
-  level: AggregationLevel;
-  locationId: string;
-}
-
 function PartyRankingTable({ results }: { results: PartyResult[] }) {
   const sortedResults = [...results].sort((a, b) => b.voteCount - a.voteCount);
   const totalVotes = sortedResults.reduce((sum, r) => sum + r.voteCount, 0);
@@ -150,7 +145,7 @@ export default function AggregationPage() {
           break;
       }
       setAggregation(data as AggregatedResult);
-    } catch (error) {
+    } catch {
       // Sample data for development
       setAggregation({
         level,

@@ -26,6 +26,13 @@ interface QuickAction {
 
 const quickActions: QuickAction[] = [
   {
+    title: 'Osun Governorship 2026',
+    description: 'Latest scraped results — IPETUMODU II ward',
+    href: '/results/scraped',
+    icon: '🆕',
+    color: 'bg-orange-500',
+  },
+  {
     title: 'Browse Elections',
     description: 'Navigate election types and geographic hierarchy',
     href: '/elections',

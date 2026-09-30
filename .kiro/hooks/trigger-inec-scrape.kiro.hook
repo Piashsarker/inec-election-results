@@ -1,0 +1,12 @@
+{
+  "name": "Trigger INEC Scrape",
+  "version": "1.0.0",
+  "description": "Manually trigger a scraping job to fetch the latest election results from the INEC IREV portal (https://www.inecelectionresults.ng/). Runs the local poller script which uses Playwright to navigate the portal, download result sheets, perform OCR, and submit results to the backend API.",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "BACKEND_URL=http://localhost:8000 /Users/piashsarker/Work/Client/joseph/backend/.venv/bin/python /Users/piashsarker/Work/Client/joseph/backend/local_poller.py --election presidential --limit 10 --dry-run"
+  }
+}

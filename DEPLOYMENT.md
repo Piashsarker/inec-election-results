@@ -1,321 +1,296 @@
-# INEC Election Results Agent - Deployment Roadmap
+# Deployment Guide
 
-## Architecture Overview
+VPS deployment for **election.thevrstation.co.uk**.
+
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        PRODUCTION SETUP                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐    │
-│  │   Frontend   │     │   Backend    │     │   Database   │    │
-│  │  Deno Deploy │────▶│    Render    │────▶│   Neon/      │    │
-│  │  (Next.js)   │     │  (FastAPI)   │     │   Supabase   │    │
-│  │  + Prisma    │     │              │     │  PostgreSQL  │    │
-│  └──────────────┘     └──────────────┘     └──────────────┘    │
-│                              │                                   │
-│                              │                                   │
-│  ┌──────────────┐           │                                   │
-│  │ Local Poller │───────────┘                                   │
-│  │  (Your Mac)  │  Scraping + OCR                               │
-│  │  Playwright  │  Jobs via API                                 │
-│  └──────────────┘                                               │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+                    ┌─────────────────────────────────────────────┐
+                    │              VPS (160.191.162.101)           │
+                    │                                             │
+Internet ──────────▶│  Nginx (ports 80/443)                       │
+                    │    ├── / ──────────▶ Frontend (Next.js:3000)│
+                    │    ├── /api/ ──────▶ Backend (FastAPI:8000) │
+                    │    ├── /docs ──────▶ Backend                │
+                    │    └── /health ────▶ Backend                │
+                    │                                             │
+                    │  PostgreSQL 15 (internal:5432)              │
+                    │  Redis 7 (internal:6379)                    │
+                    │  Certbot (auto SSL renewal)                 │
+                    └─────────────────────────────────────────────┘
 ```
 
----
+## Services
 
-## Phase 1: Database Setup (Neon or Supabase)
+| Service | Image | Container Name | Purpose |
+|---------|-------|----------------|---------|
+| Nginx | `nginx:alpine` | `inec_nginx` | Reverse proxy, SSL termination, rate limiting |
+| Certbot | `certbot/certbot` | `inec_certbot` | Let's Encrypt SSL certificate management |
+| Backend | Custom (Python 3.11) | `inec_backend` | FastAPI REST API |
+| Frontend | Custom (Node 20) | `inec_frontend` | Next.js dashboard |
+| PostgreSQL | `postgres:15-alpine` | `inec_postgres` | Primary database |
+| Redis | `redis:7-alpine` | `inec_redis` | Cache / Celery broker |
 
-### Option A: Neon PostgreSQL (Recommended)
+## Prerequisites
 
-1. Go to https://neon.tech and create account
-2. Create new project → Get connection string
-3. Connection string format:
-   ```
-   postgresql://user:password@ep-xxx.region.aws.neon.tech/dbname?sslmode=require
-   ```
+- VPS with SSH access (currently `root@160.191.162.101`)
+- Domain `election.thevrstation.co.uk` pointing to the VPS IP
+- Docker and Docker Compose installed on the VPS
 
-### Option B: Supabase PostgreSQL
+## First-Time Deployment
 
-1. Go to https://supabase.com and create project
-2. Go to Settings → Database → Connection string
-3. Use the "URI" connection string
+### 1. Point DNS to VPS
 
-### Database Migration
+Create an A record for your domain:
 
-Run migrations from your local machine:
-```bash
-cd backend
-DATABASE_URL="postgresql://..." .venv/bin/alembic upgrade head
+```
+election.thevrstation.co.uk  →  160.191.162.101
 ```
 
----
+Wait for DNS propagation (can take up to 48h, usually minutes).
 
-## Phase 2: Backend Deployment on Render
+### 2. Run the deploy script
 
-### 2.1 Prepare Backend for Render
-
-Create `backend/render.yaml`:
-```yaml
-services:
-  - type: web
-    name: inec-backend
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: DATABASE_URL
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-```
-
-Create `backend/requirements.txt` (if not exists):
-```bash
-cd backend
-.venv/bin/pip freeze > requirements.txt
-```
-
-### 2.2 Deploy to Render
-
-1. Go to https://render.com → New → Web Service
-2. Connect your GitHub repo
-3. Configure:
-   - Root Directory: `backend`
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-4. Add Environment Variables:
-   - `DATABASE_URL` = Your Neon/Supabase connection string
-   - `ENVIRONMENT` = production
-   - `OPENAI_API_KEY` = (optional, for GPT-4 Vision OCR)
-   - `REDIS_URL` = (optional, use Upstash Redis if needed)
-
-### 2.3 Update Backend Config
-
-Update `backend/app/config.py` to support `DATABASE_URL`:
-```python
-import os
-from urllib.parse import urlparse
-
-# Support DATABASE_URL for cloud deployments
-DATABASE_URL = os.getenv("DATABASE_URL")
-if DATABASE_URL:
-    # Parse DATABASE_URL
-    parsed = urlparse(DATABASE_URL)
-    DB_HOST = parsed.hostname
-    DB_PORT = parsed.port or 5432
-    DB_NAME = parsed.path[1:]  # Remove leading /
-    DB_USER = parsed.username
-    DB_PASSWORD = parsed.password
-```
-
----
-
-## Phase 3: Frontend Migration to Deno Deploy + Prisma
-
-### 3.1 Important: Architecture Decision
-
-**Current frontend is Next.js (React)**. Deno Deploy works best with:
-- Fresh framework (Deno-native)
-- Or static sites
-
-**Recommended approach**: Keep Next.js but deploy to Vercel (free tier) instead, OR migrate to Fresh.
-
-If you want Deno Deploy specifically:
-
-### 3.2 Option A: Deploy Next.js to Vercel (Easier)
-
-1. Go to https://vercel.com
-2. Import your GitHub repo
-3. Set root directory to `frontend`
-4. Add environment variable:
-   - `NEXT_PUBLIC_API_URL` = `https://your-render-backend.onrender.com`
-5. Deploy
-
-### 3.3 Option B: Migrate to Fresh + Prisma (Deno Deploy)
-
-This requires rewriting the frontend. Create new Fresh project:
+From your local machine (project root):
 
 ```bash
-deno run -A -r https://fresh.deno.dev frontend-deno
+chmod +x scripts/deploy-vps.sh
+./scripts/deploy-vps.sh
 ```
 
-Add Prisma for Deno:
-```typescript
-// frontend-deno/prisma/schema.prisma
-generator client {
-  provider = "prisma-client-js"
-  previewFeatures = ["deno"]
-  output = "../generated/client"
-}
+This script will:
+1. Install Docker on the VPS (if not present)
+2. Copy project files via rsync
+3. Build and start all containers
+4. Run database migrations
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-```
+### 3. Set up SSL certificates (first time only)
 
-### 3.4 Prisma with Deno Deploy
+SSH into the VPS and obtain the initial certificate:
 
 ```bash
-# Install Prisma CLI
-npm install prisma --save-dev
+ssh root@160.191.162.101
+cd /opt/inec-election-results
 
-# Generate Prisma client for Deno
-npx prisma generate --generator client
+# First, temporarily comment out the SSL server block in nginx.conf
+# or start nginx with HTTP only to pass the ACME challenge.
+
+# Option A: Use certbot standalone (stop nginx first)
+docker compose -f docker-compose.prod.yml stop nginx
+docker run --rm -p 80:80 \
+  -v ./certbot/conf:/etc/letsencrypt \
+  -v ./certbot/www:/var/www/certbot \
+  certbot/certbot certonly \
+  --standalone \
+  -d election.thevrstation.co.uk \
+  --email your-email@example.com \
+  --agree-tos \
+  --no-eff-email
+
+# Restart everything
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-In your Deno code:
-```typescript
-import { PrismaClient } from "./generated/client/deno/edge.ts";
+After the initial certificate is obtained, Certbot auto-renews every 12 hours via the container.
 
-const prisma = new PrismaClient();
+### 4. Configure environment variables
 
-// Use in API routes
-const results = await prisma.pollingUnitResult.findMany();
-```
-
----
-
-## Phase 4: Local Poller Setup
-
-The scraping/OCR agent runs on your local machine and pushes data to the cloud backend.
-
-### 4.1 Create Local Poller Script
-
-Create `backend/local_poller.py`:
-```python
-#!/usr/bin/env python3
-"""Local poller that scrapes INEC and pushes to cloud backend."""
-
-import asyncio
-import httpx
-import os
-from pathlib import Path
-
-# Cloud backend URL
-BACKEND_URL = os.getenv("BACKEND_URL", "https://your-app.onrender.com")
-API_KEY = os.getenv("API_KEY", "your-secret-key")
-
-async def submit_result(result: dict):
-    """Submit scraped result to cloud backend."""
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{BACKEND_URL}/api/v1/results",
-            json=result,
-            headers={"Authorization": f"Bearer {API_KEY}"}
-        )
-        return response.json()
-
-async def run_scraping_job():
-    """Run local scraping job."""
-    from app.core.scraper.browser import BrowserManager
-    from app.core.scraper.navigator import PortalNavigator
-    from app.core.ocr.engine import OCREngine
-    
-    # Initialize components
-    browser = BrowserManager()
-    navigator = PortalNavigator(browser)
-    ocr = OCREngine()
-    
-    # Scrape and process
-    # ... your scraping logic ...
-    
-    # Submit results to cloud
-    for result in results:
-        await submit_result(result)
-
-if __name__ == "__main__":
-    asyncio.run(run_scraping_job())
-```
-
-### 4.2 Run Local Poller
+SSH into the VPS and create the backend `.env`:
 
 ```bash
-cd backend
-export BACKEND_URL="https://your-app.onrender.com"
-export API_KEY="your-secret-key"
-.venv/bin/python local_poller.py
-```
+ssh root@160.191.162.101
+cd /opt/inec-election-results/backend
 
----
-
-## Phase 5: Environment Variables Summary
-
-### Render (Backend)
-```
-DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
+cat > .env << 'EOF'
 ENVIRONMENT=production
-OPENAI_API_KEY=sk-xxx (optional)
-API_KEY=your-secret-for-local-poller
+DEBUG=false
+
+# Database (matches docker-compose.prod.yml)
+DB_HOST=postgres
+DB_PORT=5432
+DB_NAME=inec_elections
+DB_USER=postgres
+DB_PASSWORD=postgres
+
+# Redis
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+# OpenAI (for GPT-4 Vision OCR)
+OPENAI_API_KEY=sk-your-key-here
+
+# CORS
+CORS_ORIGINS=["https://election.thevrstation.co.uk","http://localhost:3000"]
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FORMAT=json
+EOF
 ```
 
-### Vercel/Deno Deploy (Frontend)
-```
-NEXT_PUBLIC_API_URL=https://your-backend.onrender.com
-DATABASE_URL=postgresql://... (if using Prisma directly)
-```
-
-### Local Poller
-```
-BACKEND_URL=https://your-backend.onrender.com
-API_KEY=your-secret-for-local-poller
-OPENAI_API_KEY=sk-xxx (for OCR)
-```
-
----
-
-## Phase 6: Deployment Checklist
-
-### Backend (Render)
-- [ ] Create Neon/Supabase PostgreSQL database
-- [ ] Run migrations: `alembic upgrade head`
-- [ ] Create Render web service
-- [ ] Set environment variables
-- [ ] Deploy and verify `/docs` endpoint works
-
-### Frontend (Vercel recommended)
-- [ ] Create Vercel project
-- [ ] Set `NEXT_PUBLIC_API_URL` environment variable
-- [ ] Deploy and verify dashboard loads
-
-### Local Poller
-- [ ] Configure `BACKEND_URL` and `API_KEY`
-- [ ] Test connection to cloud backend
-- [ ] Run scraping job and verify data appears in dashboard
-
----
-
-## Cost Estimates (Free Tiers)
-
-| Service | Free Tier |
-|---------|-----------|
-| Render | 750 hours/month (sleeps after 15min inactivity) |
-| Neon | 0.5 GB storage, 190 compute hours |
-| Vercel | 100 GB bandwidth, unlimited deploys |
-| Supabase | 500 MB database, 2 GB bandwidth |
-
----
-
-## Quick Start Commands
+Then restart the backend:
 
 ```bash
-# 1. Setup database
-DATABASE_URL="postgresql://..." alembic upgrade head
+docker compose -f docker-compose.prod.yml restart backend
+```
 
-# 2. Test backend locally with cloud DB
-DATABASE_URL="postgresql://..." uvicorn app.main:app --reload
+## Subsequent Deployments
 
-# 3. Deploy backend to Render (via GitHub push)
-git push origin main
+From your local machine:
 
-# 4. Deploy frontend to Vercel
-cd frontend && vercel
+```bash
+./scripts/deploy-vps.sh
+```
 
-# 5. Run local poller
-BACKEND_URL="https://xxx.onrender.com" python local_poller.py
+Or manually:
+
+```bash
+# Copy updated files
+rsync -avz --exclude='.git' --exclude='node_modules' --exclude='.next' \
+  --exclude='__pycache__' --exclude='.venv' --exclude='*.pyc' \
+  --exclude='.env' --exclude='logs/*' --exclude='backend/data/result_sheets/*' \
+  ./ root@160.191.162.101:/opt/inec-election-results/
+
+# SSH in and rebuild
+ssh root@160.191.162.101
+cd /opt/inec-election-results
+docker compose -f docker-compose.prod.yml up -d --build
+
+# Run migrations if needed
+docker exec inec_backend alembic upgrade head
+```
+
+## Managing the Deployment
+
+### Check status
+
+```bash
+ssh root@160.191.162.101
+cd /opt/inec-election-results
+docker compose -f docker-compose.prod.yml ps
+```
+
+### View logs
+
+```bash
+# All services
+docker compose -f docker-compose.prod.yml logs -f
+
+# Specific service
+docker compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker-compose.prod.yml logs -f frontend
+docker compose -f docker-compose.prod.yml logs -f nginx
+```
+
+### Restart a service
+
+```bash
+docker compose -f docker-compose.prod.yml restart backend
+```
+
+### Stop everything
+
+```bash
+docker compose -f docker-compose.prod.yml down
+```
+
+### Run database migrations
+
+```bash
+docker exec inec_backend alembic upgrade head
+```
+
+### Access the database
+
+```bash
+docker exec -it inec_postgres psql -U postgres -d inec_elections
+```
+
+## URLs
+
+| URL | Description |
+|-----|-------------|
+| `https://election.thevrstation.co.uk` | Frontend dashboard |
+| `https://election.thevrstation.co.uk/api/v1/...` | REST API |
+| `https://election.thevrstation.co.uk/docs` | Swagger API docs |
+| `https://election.thevrstation.co.uk/redoc` | ReDoc API docs |
+| `https://election.thevrstation.co.uk/health` | Health check |
+
+## Nginx Configuration
+
+The Nginx reverse proxy handles:
+
+- **HTTP → HTTPS redirect** on port 80
+- **SSL termination** with Let's Encrypt certificates (auto-renewed)
+- **Rate limiting** on `/api/` routes (10 req/s per IP, burst 20)
+- **Security headers** (HSTS, X-Frame-Options, X-Content-Type-Options, XSS protection)
+- **Routing**: `/api/`, `/docs`, `/redoc`, `/health` → backend; everything else → frontend
+
+## SSL Certificate Renewal
+
+Certbot runs inside a container and checks for renewal every 12 hours. Nginx reloads every 6 hours to pick up new certificates. This is fully automatic — no manual intervention needed.
+
+To force a renewal:
+
+```bash
+docker exec inec_certbot certbot renew --force-renewal
+docker exec inec_nginx nginx -s reload
+```
+
+## Troubleshooting
+
+### Site not loading
+
+1. Check DNS: `dig election.thevrstation.co.uk` should return `160.191.162.101`
+2. Check containers: `docker compose -f docker-compose.prod.yml ps`
+3. Check nginx logs: `docker compose -f docker-compose.prod.yml logs nginx`
+
+### SSL certificate errors
+
+```bash
+# Check certificate status
+docker exec inec_certbot certbot certificates
+
+# Re-issue if needed
+docker compose -f docker-compose.prod.yml stop nginx
+docker exec inec_certbot certbot certonly --standalone \
+  -d election.thevrstation.co.uk --force-renewal
+docker compose -f docker-compose.prod.yml start nginx
+```
+
+### Backend 502 errors
+
+The backend container may have crashed:
+
+```bash
+docker compose -f docker-compose.prod.yml logs backend --tail=50
+docker compose -f docker-compose.prod.yml restart backend
+```
+
+### Database connection issues
+
+```bash
+# Check postgres is running
+docker compose -f docker-compose.prod.yml logs postgres
+
+# Verify connectivity from backend
+docker exec inec_backend python -c "
+from app.db.session import engine
+import asyncio
+async def check():
+    async with engine.begin() as conn:
+        result = await conn.execute('SELECT 1')
+        print('DB OK')
+asyncio.run(check())
+"
+```
+
+### Disk space
+
+```bash
+# Check disk usage
+df -h
+
+# Clean up Docker resources
+docker system prune -a --volumes
 ```

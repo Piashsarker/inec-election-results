@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
-import { ElectionResult, ElectionType, PartyResult } from '@/types';
+import { ElectionResult, ElectionType } from '@/types';
 
 type SortField = 'state' | 'lga' | 'ward' | 'pollingUnit' | 'validVotes' | 'extractedAt' | 'confidenceScore';
 type SortDirection = 'asc' | 'desc';
@@ -130,7 +130,7 @@ export default function ResultsPage() {
         const response = data as { data: ElectionResult[]; totalPages: number };
         setResults(response.data || []);
         setTotalPages(response.totalPages || 1);
-      } catch (error) {
+      } catch {
         // Sample data for development
         setResults([
           {
