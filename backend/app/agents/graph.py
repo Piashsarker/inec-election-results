@@ -8,6 +8,7 @@ Requirements: 1.1, 2.1, 3.1, 4.2
 from __future__ import annotations
 
 import logging
+import uuid
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, TypedDict
@@ -18,8 +19,6 @@ logger = logging.getLogger("inec_agent.agents.graph")
 
 
 class ProcessingStatus(StrEnum):
-    """Status of the processing workflow."""
-
     PENDING = "pending"
     NAVIGATING = "navigating"
     DOWNLOADING = "downloading"
@@ -35,8 +34,6 @@ class ProcessingStatus(StrEnum):
 
 @dataclass
 class LocationInfo:
-    """Current location in the portal hierarchy."""
-
     election_type: str = ""
     state: str = ""
     lga: str = ""
@@ -47,8 +44,6 @@ class LocationInfo:
 
 @dataclass
 class DownloadedImage:
-    """Information about a downloaded result sheet image."""
-
     file_path: str
     file_format: str
     file_size: int
@@ -58,8 +53,6 @@ class DownloadedImage:
 
 @dataclass
 class ProcessingError:
-    """Error that occurred during processing."""
-
     stage: str
     message: str
     details: dict[str, Any] | None = None
@@ -67,44 +60,17 @@ class ProcessingError:
 
 
 class AgentState(TypedDict):
-    """State shared across agents in the LangGraph workflow.
+    """State shared across all agents in the LangGraph workflow."""
 
-    This TypedDict defines the state that flows through the workflow,
-    containing all information needed for processing election results.
-
-    Attributes:
-        job_id: Unique identifier for the scraping job
-        current_location: Current position in portal hierarchy
-        polling_unit: Current polling unit being processed
-        downloaded_images: List of downloaded result sheet images
-        ocr_results: OCR processing results
-        extracted_data: Extracted election data
-        validation_results: Data validation results
-        errors: List of errors encountered during processing
-        status: Current processing status
-        metadata: Additional metadata for the workflow
-    """
-
-    # Job identification
     job_id: str
-
-    # Navigation state
     current_location: dict[str, str]
     polling_unit: dict[str, Any] | None
-
-    # Processing results
     downloaded_images: list[dict[str, Any]]
     ocr_results: dict[str, Any] | None
     extracted_data: dict[str, Any] | None
     validation_results: dict[str, Any] | None
-
-    # Error tracking
     errors: list[dict[str, Any]]
-
-    # Workflow status
     status: str
-
-    # Additional metadata
     metadata: dict[str, Any]
 
 
@@ -115,18 +81,6 @@ def create_initial_state(
     lga: str = "",
     ward: str = "",
 ) -> AgentState:
-    """Create initial agent state for a new workflow.
-
-    Args:
-        job_id: Unique job identifier
-        election_type: Target election type
-        state: Target state
-        lga: Target LGA
-        ward: Target ward
-
-    Returns:
-        Initial AgentState
-    """
     return AgentState(
         job_id=job_id,
         current_location={
@@ -148,229 +102,270 @@ def create_initial_state(
     )
 
 
-# Node functions for the workflow
+# ── Node implementations ───────────────────────────────────────────────────────
+# Each node delegates to the appropriate agent class.  Agents are imported
+# lazily inside the node to avoid circular imports and to keep startup fast.
 
 async def navigate_node(state: AgentState) -> AgentState:
-    """Navigate to the polling unit in the portal.
-
-    This node handles navigation through the INEC portal hierarchy
-    to reach the target polling unit.
-
-    Args:
-        state: Current agent state
-
-    Returns:
-        Updated agent state with navigation results
-    """
-    logger.info(f"Navigate node: Processing job {state['job_id']}")
-
-    state["status"] = ProcessingStatus.NAVIGATING.value
-
-    # Navigation is handled by NavigatorAgent
-    # This node updates state to indicate navigation is complete
-
-    return state
+    """Navigate to the polling unit and download the result sheet image."""
+    logger.info(f"Navigate+Download node: job {state['job_id']}")
+    from app.agents.navigator import NavigatorAgent
+    agent = NavigatorAgent()
+    return await agent.process_state(state)
 
 
 async def download_node(state: AgentState) -> AgentState:
-    """Download result sheet image for the polling unit.
-
-    This node handles downloading the result sheet image from
-    the INEC portal.
-
-    Args:
-        state: Current agent state
-
-    Returns:
-        Updated agent state with download results
-    """
-    logger.info(f"Download node: Processing job {state['job_id']}")
-
+    """Pass-through — download is combined with navigate above."""
+    logger.info(f"Download node: job {state['job_id']}")
     state["status"] = ProcessingStatus.DOWNLOADING.value
-
-    # Download is handled by NavigatorAgent
-    # This node updates state with downloaded image info
-
     return state
 
 
 async def preprocess_node(state: AgentState) -> AgentState:
-    """Preprocess the downloaded image for OCR.
-
-    This node handles image preprocessing including grayscale conversion,
-    deskewing, noise removal, and contrast enhancement.
-
-    Args:
-        state: Current agent state
-
-    Returns:
-        Updated agent state with preprocessing results
-    """
-    logger.info(f"Preprocess node: Processing job {state['job_id']}")
-
-    state["status"] = ProcessingStatus.PREPROCESSING.value
-
-    # Preprocessing is handled by ProcessorAgent
-
-    return state
+    """Preprocess + OCR + extract — handled by ProcessorAgent."""
+    logger.info(f"OCR/Extract node: job {state['job_id']}")
+    from app.agents.processor import ProcessorAgent
+    from app.config import get_settings
+    settings = get_settings()
+    agent = ProcessorAgent(
+        openai_api_key=settings.openai.api_key,
+        openai_model=settings.openai.model,
+    )
+    return await agent.process_state(state)
 
 
 async def ocr_node(state: AgentState) -> AgentState:
-    """Perform OCR on the preprocessed image.
-
-    This node handles OCR processing using either Tesseract or
-    GPT-4 Vision based on image quality.
-
-    Args:
-        state: Current agent state
-
-    Returns:
-        Updated agent state with OCR results
-    """
-    logger.info(f"OCR node: Processing job {state['job_id']}")
-
+    """Pass-through — OCR is handled in preprocess_node."""
     state["status"] = ProcessingStatus.OCR_PROCESSING.value
-
-    # OCR is handled by ProcessorAgent
-
     return state
 
 
 async def extract_node(state: AgentState) -> AgentState:
-    """Extract structured data from OCR results.
-
-    This node handles parsing OCR output to extract party names,
-    vote counts, and summary fields.
-
-    Args:
-        state: Current agent state
-
-    Returns:
-        Updated agent state with extracted data
-    """
-    logger.info(f"Extract node: Processing job {state['job_id']}")
-
+    """Pass-through — extraction is handled in preprocess_node."""
     state["status"] = ProcessingStatus.EXTRACTING.value
-
-    # Extraction is handled by ProcessorAgent
-
     return state
 
 
 async def validate_node(state: AgentState) -> AgentState:
-    """Validate extracted election data.
-
-    This node handles data validation including vote sum validation,
-    totals validation, and confidence scoring.
-
-    Args:
-        state: Current agent state
-
-    Returns:
-        Updated agent state with validation results
-    """
-    logger.info(f"Validate node: Processing job {state['job_id']}")
-
-    state["status"] = ProcessingStatus.VALIDATING.value
-
-    # Validation is handled by ValidatorAgent
-
-    return state
+    """Validate extracted election data."""
+    logger.info(f"Validate node: job {state['job_id']}")
+    from app.agents.validator import ValidatorAgent
+    agent = ValidatorAgent()
+    return await agent.process_state(state)
 
 
 async def store_node(state: AgentState) -> AgentState:
-    """Store validated election data in the database.
-
-    This node handles persisting the extracted and validated
-    election data to the database.
-
-    Args:
-        state: Current agent state
-
-    Returns:
-        Updated agent state after storage
-    """
-    logger.info(f"Store node: Processing job {state['job_id']}")
-
+    """Persist validated election data to the database."""
+    logger.info(f"Store node: job {state['job_id']}")
     state["status"] = ProcessingStatus.STORING.value
 
-    # Storage is handled by the orchestrator
+    extracted = state.get("extracted_data")
+    downloaded = state.get("downloaded_images", [])
+    if not extracted or not downloaded:
+        state["status"] = ProcessingStatus.COMPLETED.value
+        return state
+
+    try:
+        import decimal
+
+        from sqlalchemy import select
+
+        from app.config import get_settings
+        from app.db.session import get_async_session
+        from app.models.election import ElectionResult, PartyResult
+
+        settings = get_settings()  # noqa: F841  (kept for future env access)
+        location = state["current_location"]
+        pu_data = state.get("polling_unit", {}) or {}
+        image_info = downloaded[0]
+
+        # Resolve the polling_unit DB row by code
+        async for session in get_async_session():
+            from app.models.election import ElectionType, PoliticalParty
+            from app.models.geography import PollingUnit
+
+            # Look up polling unit
+            pu_result = await session.execute(
+                select(PollingUnit).where(PollingUnit.code == pu_data.get("code", ""))
+            )
+            pu = pu_result.scalar_one_or_none()
+
+            # Look up election type
+            et_result = await session.execute(
+                select(ElectionType).where(
+                    ElectionType.code == location.get("election_type", "")
+                )
+            )
+            et = et_result.scalar_one_or_none()
+
+            if not pu or not et:
+                logger.warning(
+                    f"Cannot store — polling unit or election type not found "
+                    f"(pu_code={pu_data.get('code')}, et_code={location.get('election_type')})"
+                )
+                state["status"] = ProcessingStatus.COMPLETED.value
+                return state
+
+            summary = extracted.get("summary", {})
+            confidence = extracted.get("confidence", 0.0)
+
+            # Upsert ElectionResult
+            existing = await session.execute(
+                select(ElectionResult).where(
+                    ElectionResult.election_type_id == et.id,
+                    ElectionResult.polling_unit_id == pu.id,
+                )
+            )
+            er = existing.scalar_one_or_none()
+
+            storage_url = image_info.get("storage_url") or image_info.get("file_path", "")
+
+            if er is None:
+                er = ElectionResult(
+                    id=uuid.uuid4(),
+                    election_type_id=et.id,
+                    polling_unit_id=pu.id,
+                    accredited_voters=summary.get("accredited_voters", 0),
+                    valid_votes=summary.get("valid_votes", 0),
+                    rejected_votes=summary.get("rejected_votes", 0),
+                    confidence_score=decimal.Decimal(str(round(confidence, 2))),
+                    source_image_path=storage_url[:500] if storage_url else None,
+                )
+                session.add(er)
+                await session.flush()
+            else:
+                er.accredited_voters = summary.get("accredited_voters", er.accredited_voters)
+                er.valid_votes = summary.get("valid_votes", er.valid_votes)
+                er.rejected_votes = summary.get("rejected_votes", er.rejected_votes)
+                er.confidence_score = decimal.Decimal(str(round(confidence, 2)))
+                if storage_url:
+                    er.source_image_path = storage_url[:500]
+
+            # Upsert PartyResults
+            total_votes = sum(
+                pv.get("votes", 0) for pv in extracted.get("party_votes", [])
+            ) or 1
+
+            for pv in extracted.get("party_votes", []):
+                party_code = pv.get("party_code", "").upper()
+                if not party_code:
+                    continue
+
+                # Get or create party
+                party_res = await session.execute(
+                    select(PoliticalParty).where(PoliticalParty.code == party_code)
+                )
+                party = party_res.scalar_one_or_none()
+                if party is None:
+                    party = PoliticalParty(
+                        id=uuid.uuid4(),
+                        code=party_code,
+                        name=pv.get("party_name", party_code),
+                    )
+                    session.add(party)
+                    await session.flush()
+
+                votes = pv.get("votes", 0)
+                pct = decimal.Decimal(str(round((votes / total_votes) * 100, 2)))
+
+                pr_res = await session.execute(
+                    select(PartyResult).where(
+                        PartyResult.election_result_id == er.id,
+                        PartyResult.party_id == party.id,
+                    )
+                )
+                pr = pr_res.scalar_one_or_none()
+                if pr is None:
+                    session.add(PartyResult(
+                        id=uuid.uuid4(),
+                        election_result_id=er.id,
+                        party_id=party.id,
+                        vote_count=votes,
+                        percentage=pct,
+                    ))
+                else:
+                    pr.vote_count = votes
+                    pr.percentage = pct
+
+            await session.commit()
+            logger.info(
+                f"Stored result for PU {pu.code} — "
+                f"{len(extracted.get('party_votes', []))} parties, "
+                f"confidence={confidence:.2f}"
+            )
+            state["metadata"]["db_result_id"] = str(er.id)
+            break  # only one session iteration needed
+
+    except Exception as exc:
+        logger.error(f"Store node error: {exc}", exc_info=True)
+        state["errors"].append({"stage": "store", "message": str(exc), "recoverable": False})
 
     state["status"] = ProcessingStatus.COMPLETED.value
-
     return state
 
 
 async def flag_node(state: AgentState) -> AgentState:
-    """Flag result for manual review.
-
-    This node handles flagging results that failed validation
-    or have low confidence scores.
-
-    Args:
-        state: Current agent state
-
-    Returns:
-        Updated agent state after flagging
-    """
-    logger.info(f"Flag node: Processing job {state['job_id']}")
-
+    """Flag the result for manual review and still persist it."""
+    logger.info(f"Flag node: job {state['job_id']}")
     state["status"] = ProcessingStatus.FLAGGING.value
 
-    # Flagging is handled by ValidatorAgent
+    # Store what we have even if validation failed — the FlaggedResult
+    # record will point reviewers to it.
+    state = await store_node(state)
+
+    validation = state.get("validation_results") or {}
+    result_id = state.get("metadata", {}).get("db_result_id")
+
+    if result_id:
+        try:
+            from sqlalchemy import select
+
+            from app.config import get_settings  # noqa: F401
+            from app.db.session import get_async_session
+            from app.models.election import ElectionResult
+            from app.models.job import FlaggedResult
+
+            async for session in get_async_session():
+                er_res = await session.execute(
+                    select(ElectionResult).where(
+                        ElectionResult.id == uuid.UUID(result_id)
+                    )
+                )
+                er = er_res.scalar_one_or_none()
+                if er:
+                    errors = validation.get("errors", [])
+                    reason = "; ".join(errors) if errors else "Low confidence or validation failed"
+                    session.add(FlaggedResult(
+                        id=uuid.uuid4(),
+                        election_result_id=er.id,
+                        reason=reason[:500],
+                        status="pending",
+                    ))
+                    await session.commit()
+                break
+        except Exception as exc:
+            logger.error(f"Flag node DB error: {exc}", exc_info=True)
 
     state["status"] = ProcessingStatus.COMPLETED.value
-
     return state
 
 
 def should_store_or_flag(state: AgentState) -> str:
-    """Determine whether to store or flag the result.
-
-    This conditional edge function checks validation results
-    to determine the next step in the workflow.
-
-    Args:
-        state: Current agent state
-
-    Returns:
-        "store" if validation passed, "flag" otherwise
-    """
     validation_results = state.get("validation_results")
-
     if validation_results is None:
-        logger.warning("No validation results found, flagging for review")
         return "flag"
-
-    is_valid = validation_results.get("is_valid", False)
-    should_flag = validation_results.get("should_flag", True)
-
-    if is_valid and not should_flag:
-        logger.info("Validation passed, storing result")
+    if (
+        validation_results.get("is_valid", False)
+        and not validation_results.get("should_flag", True)
+    ):
         return "store"
-    else:
-        logger.info(f"Validation failed or flagged, reason: {validation_results.get('flag_reason', 'unknown')}")
-        return "flag"
+    return "flag"
 
 
 def create_agent_graph() -> StateGraph:
-    """Create the LangGraph workflow for election data processing.
-
-    This function creates a StateGraph with nodes for each processing
-    step and edges defining the workflow flow.
-
-    Workflow:
-    1. navigate -> download -> preprocess -> ocr -> extract -> validate
-    2. validate -> store (if valid) or flag (if invalid)
-    3. store/flag -> END
-
-    Returns:
-        Compiled StateGraph workflow
-    """
-    # Create the workflow graph
+    """Compile and return the full processing workflow."""
     workflow = StateGraph(AgentState)
 
-    # Add nodes for each processing step
     workflow.add_node("navigate", navigate_node)
     workflow.add_node("download", download_node)
     workflow.add_node("preprocess", preprocess_node)
@@ -380,44 +375,25 @@ def create_agent_graph() -> StateGraph:
     workflow.add_node("store", store_node)
     workflow.add_node("flag", flag_node)
 
-    # Add sequential edges for the main processing flow
     workflow.add_edge("navigate", "download")
     workflow.add_edge("download", "preprocess")
     workflow.add_edge("preprocess", "ocr")
     workflow.add_edge("ocr", "extract")
     workflow.add_edge("extract", "validate")
-
-    # Add conditional edges for validation routing
     workflow.add_conditional_edges(
-        "validate",
-        should_store_or_flag,
-        {
-            "store": "store",
-            "flag": "flag",
-        }
+        "validate", should_store_or_flag, {"store": "store", "flag": "flag"}
     )
-
-    # Add terminal edges
     workflow.add_edge("store", END)
     workflow.add_edge("flag", END)
 
-    # Set the entry point
     workflow.set_entry_point("navigate")
-
-    # Compile and return the workflow
     return workflow.compile()
 
 
-# Convenience function to get a compiled graph instance
 _compiled_graph = None
 
 
 def get_agent_graph() -> StateGraph:
-    """Get or create the compiled agent graph.
-
-    Returns:
-        Compiled StateGraph workflow (cached)
-    """
     global _compiled_graph
     if _compiled_graph is None:
         _compiled_graph = create_agent_graph()

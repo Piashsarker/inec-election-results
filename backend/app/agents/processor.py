@@ -1,7 +1,7 @@
 """Processor agent for OCR and data extraction.
 
 This module provides the processor agent that handles OCR processing
-and data extraction from result sheet images.
+and data extraction from result sheet images using GPT-4 Vision.
 
 Requirements: 3.1, 3.2
 """
@@ -37,11 +37,11 @@ class ProcessingResult:
 
 
 class ProcessorAgent:
-    """Agent for OCR processing and data extraction.
+    """Agent for OCR processing and data extraction using GPT-4 Vision.
 
     This agent handles:
     - Image preprocessing for optimal OCR performance
-    - OCR processing using Tesseract or GPT-4 Vision
+    - OCR processing using GPT-4 Vision for all images
     - Data extraction from OCR output
     - Confidence scoring and quality assessment
 
@@ -50,32 +50,34 @@ class ProcessorAgent:
 
     def __init__(
         self,
-        quality_threshold: float = 0.7,
         openai_api_key: str | None = None,
         openai_model: str = "gpt-4o",
+        preprocess_images: bool = True,
+        # Kept for API compatibility
+        quality_threshold: float = 0.7,
+        enable_fallback: bool = False,
         tesseract_lang: str = "eng",
-        enable_fallback: bool = True,
     ):
         """Initialize the processor agent.
 
         Args:
-            quality_threshold: Threshold for OCR engine selection
             openai_api_key: OpenAI API key for GPT-4 Vision
-            openai_model: OpenAI model to use
-            tesseract_lang: Tesseract language code
-            enable_fallback: Whether to enable fallback to alternative engine
+            openai_model: OpenAI model to use (default: gpt-4o)
+            preprocess_images: Whether to preprocess images before OCR
+            quality_threshold: Kept for API compatibility (unused)
+            enable_fallback: Kept for API compatibility (unused)
+            tesseract_lang: Kept for API compatibility (unused)
         """
         self.ocr_orchestrator = OCROrchestrator(
-            quality_threshold=quality_threshold,
-            tesseract_lang=tesseract_lang,
             openai_api_key=openai_api_key,
             openai_model=openai_model,
-            enable_fallback=enable_fallback,
+            preprocess_images=preprocess_images,
+            quality_threshold=quality_threshold,
         )
 
         self.extractor = ElectionDataExtractor()
 
-        logger.info("ProcessorAgent initialized")
+        logger.info("ProcessorAgent initialized with GPT-4 Vision")
 
     async def process_image(
         self,
@@ -118,16 +120,12 @@ class ProcessorAgent:
                 f"confidence: {ocr_result.confidence:.2f}"
             )
 
-            # Extract structured data
-            if ocr_result.raw_ocr_result:
-                # Use Tesseract OCR result
-                extraction_result = self.extractor.extract(ocr_result.raw_ocr_result)
-            elif ocr_result.extraction:
-                # GPT-4 Vision already provides structured extraction
-                # Convert to our ExtractionResult format
+            # Extract structured data — GPT-4 Vision always returns
+            # a structured extraction directly; no Tesseract branch needed
+            if ocr_result.extraction:
                 extraction_result = self._convert_vision_extraction(ocr_result.extraction)
             else:
-                # Fallback to text extraction
+                # Fallback: try to parse whatever raw text was returned
                 extraction_result = self.extractor.extract_from_text(ocr_result.text)
 
             logger.info(
@@ -186,10 +184,9 @@ class ProcessorAgent:
                 f"confidence: {ocr_result.confidence:.2f}"
             )
 
-            # Extract structured data
-            if ocr_result.raw_ocr_result:
-                extraction_result = self.extractor.extract(ocr_result.raw_ocr_result)
-            elif ocr_result.extraction:
+            # Extract structured data — GPT-4 Vision always returns a
+            # structured extraction directly; no Tesseract branch needed
+            if ocr_result.extraction:
                 extraction_result = self._convert_vision_extraction(ocr_result.extraction)
             else:
                 extraction_result = self.extractor.extract_from_text(ocr_result.text)
@@ -324,7 +321,9 @@ class ProcessorAgent:
                     party_name=p.get('name', ''),
                     party_code=p.get('code', ''),
                     votes=p.get('votes', 0),
-                    confidence=vision_result.confidence if hasattr(vision_result, 'confidence') else 0.8,
+                    confidence=vision_result.confidence
+                    if hasattr(vision_result, "confidence")
+                    else 0.8,
                 )
                 for p in vision_result.parties
             ]
@@ -349,16 +348,14 @@ class ProcessorAgent:
         )
 
     def select_ocr_engine(self, quality_score: float) -> OCREngine:
-        """Select appropriate OCR engine based on image quality.
+        """Return GPT-4 Vision regardless of image quality.
 
         Args:
-            quality_score: Image quality score (0-1)
+            quality_score: Image quality score (0-1, kept for API compatibility)
 
         Returns:
-            Selected OCR engine
+            OCREngine.GPT4_VISION always
         """
-        if quality_score >= self.ocr_orchestrator.quality_threshold:
-            return OCREngine.TESSERACT
         return OCREngine.GPT4_VISION
 
     def get_engine_status(self) -> dict[str, Any]:

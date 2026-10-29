@@ -21,6 +21,8 @@ router = APIRouter()
 
 class CreateJobRequest(BaseModel):
     """Request to create a scraping job."""
+
+    url: str | None = None
     election_type: str | None = None
     target_state: str | None = None
     target_lga: str | None = None
@@ -29,6 +31,7 @@ class CreateJobRequest(BaseModel):
 
 class JobResponse(BaseModel):
     """Scraping job response schema."""
+
     id: UUID
     status: str
     election_type: str | None
@@ -44,6 +47,22 @@ class JobResponse(BaseModel):
         from_attributes = True
 
 
+@router.get("", response_model=list[JobResponse])
+async def list_jobs(
+    session: AsyncSession = Depends(get_async_session),
+) -> list[JobResponse]:
+    """List all scraping jobs, most recent first.
+
+    Returns:
+        List of scraping jobs
+    """
+    result = await session.execute(
+        select(ScrapingJob).order_by(ScrapingJob.created_at.desc()).limit(50)
+    )
+    jobs = result.scalars().all()
+    return [JobResponse.model_validate(j) for j in jobs]
+
+
 @router.post("/scrape", response_model=JobResponse)
 async def start_scraping_job(
     request: CreateJobRequest,
@@ -51,8 +70,11 @@ async def start_scraping_job(
 ) -> JobResponse:
     """Start a new scraping job.
 
+    Accepts an optional INEC portal URL to scope the scrape, or
+    individual election_type / state / lga / ward filters.
+
     Args:
-        request: Job configuration with optional scope filters
+        request: Job configuration
 
     Returns:
         Created job with ID for tracking
@@ -68,8 +90,25 @@ async def start_scraping_job(
     await session.commit()
     await session.refresh(job)
 
-    # In production, this would trigger a Celery task
-    # celery_app.send_task('scrape_job', args=[str(job.id)])
+    # Dispatch to Celery worker
+    try:
+        from app.workers.celery_app import celery_app
+        celery_app.send_task(
+            "app.workers.tasks.run_scraping_job",
+            args=[str(job.id)],
+            kwargs={
+                "election_type": request.election_type,
+                "target_state": request.target_state,
+                "target_lga": request.target_lga,
+                "target_ward": request.target_ward,
+            },
+        )
+    except Exception as e:
+        # Worker unavailable — job stays queued, can be picked up later
+        import logging
+        logging.getLogger(__name__).warning(
+            f"Could not dispatch Celery task for job {job.id}: {e}"
+        )
 
     return JobResponse.model_validate(job)
 

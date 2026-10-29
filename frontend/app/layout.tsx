@@ -12,6 +12,7 @@ const inter = Inter({ subsets: ['latin'] });
 // Navigation items
 const navItems = [
   { href: '/', label: 'Dashboard', icon: '📊' },
+  { href: '/scraping', label: 'Scraping', icon: '🕷️' },
   { href: '/elections', label: 'Elections', icon: '🗳️' },
   { href: '/results', label: 'Results', icon: '📋' },
   { href: '/aggregation', label: 'Aggregation', icon: '📈' },
@@ -37,7 +38,7 @@ function Navigation() {
                   key={item.href}
                   href={item.href}
                   className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    pathname === item.href
+                    (item.href === '/' ? pathname === '/' : pathname.startsWith(item.href))
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                   }`}

@@ -2,7 +2,7 @@
  * API client for INEC Election Results backend
  */
 
-import { StateAggregationData } from '@/types';
+import { StateAggregationData, ScrapingJob } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -107,15 +107,25 @@ export const api = {
   },
 
   // Jobs endpoints
-  startScrapingJob: (config: Record<string, unknown>) =>
-    fetchApi('/jobs/scrape', {
+  startScrapingJob: (config: {
+    url?: string;
+    election_type?: string;
+    target_state?: string;
+    target_lga?: string;
+    target_ward?: string;
+  }) =>
+    fetchApi<ScrapingJob>('/jobs/scrape', {
       method: 'POST',
       body: JSON.stringify(config),
     }),
-  getJobStatus: (jobId: string) => fetchApi(`/jobs/${jobId}`),
-  pauseJob: (jobId: string) => fetchApi(`/jobs/${jobId}/pause`, { method: 'POST' }),
-  resumeJob: (jobId: string) => fetchApi(`/jobs/${jobId}/resume`, { method: 'POST' }),
-  cancelJob: (jobId: string) => fetchApi(`/jobs/${jobId}`, { method: 'DELETE' }),
+  getJobStatus: (jobId: string) => fetchApi<ScrapingJob>(`/jobs/${jobId}`),
+  pauseJob: (jobId: string) =>
+    fetchApi<ScrapingJob>(`/jobs/${jobId}/pause`, { method: 'POST' }),
+  resumeJob: (jobId: string) =>
+    fetchApi<ScrapingJob>(`/jobs/${jobId}/resume`, { method: 'POST' }),
+  cancelJob: (jobId: string) =>
+    fetchApi<ScrapingJob>(`/jobs/${jobId}`, { method: 'DELETE' }),
+  listJobs: () => fetchApi<ScrapingJob[]>('/jobs'),
 
   // Export endpoints
   exportCsv: (filters: Record<string, unknown>) =>

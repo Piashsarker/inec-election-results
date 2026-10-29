@@ -1,6 +1,6 @@
 # Deployment Guide
 
-VPS deployment for **election.thevrstation.co.uk**.
+VPS deployment for **boxitracker.com**.
 
 ## Architecture
 
@@ -34,7 +34,7 @@ Internet ──────────▶│  Nginx (ports 80/443)             
 ## Prerequisites
 
 - VPS with SSH access (currently `root@160.191.162.101`)
-- Domain `election.thevrstation.co.uk` pointing to the VPS IP
+- Domain `boxitracker.com` pointing to the VPS IP
 - Docker and Docker Compose installed on the VPS
 
 ## First-Time Deployment
@@ -44,7 +44,7 @@ Internet ──────────▶│  Nginx (ports 80/443)             
 Create an A record for your domain:
 
 ```
-election.thevrstation.co.uk  →  160.191.162.101
+boxitracker.com  →  160.191.162.101
 ```
 
 Wait for DNS propagation (can take up to 48h, usually minutes).
@@ -82,7 +82,7 @@ docker run --rm -p 80:80 \
   -v ./certbot/www:/var/www/certbot \
   certbot/certbot certonly \
   --standalone \
-  -d election.thevrstation.co.uk \
+  -d boxitracker.com \
   --email your-email@example.com \
   --agree-tos \
   --no-eff-email
@@ -120,7 +120,7 @@ REDIS_PORT=6379
 OPENAI_API_KEY=sk-your-key-here
 
 # CORS
-CORS_ORIGINS=["https://election.thevrstation.co.uk","http://localhost:3000"]
+CORS_ORIGINS=["https://boxitracker.com","http://localhost:3000"]
 
 # Logging
 LOG_LEVEL=INFO
@@ -210,11 +210,11 @@ docker exec -it inec_postgres psql -U postgres -d inec_elections
 
 | URL | Description |
 |-----|-------------|
-| `https://election.thevrstation.co.uk` | Frontend dashboard |
-| `https://election.thevrstation.co.uk/api/v1/...` | REST API |
-| `https://election.thevrstation.co.uk/docs` | Swagger API docs |
-| `https://election.thevrstation.co.uk/redoc` | ReDoc API docs |
-| `https://election.thevrstation.co.uk/health` | Health check |
+| `https://boxitracker.com` | Frontend dashboard |
+| `https://boxitracker.com/api/v1/...` | REST API |
+| `https://boxitracker.com/docs` | Swagger API docs |
+| `https://boxitracker.com/redoc` | ReDoc API docs |
+| `https://boxitracker.com/health` | Health check |
 
 ## Nginx Configuration
 
@@ -241,7 +241,7 @@ docker exec inec_nginx nginx -s reload
 
 ### Site not loading
 
-1. Check DNS: `dig election.thevrstation.co.uk` should return `160.191.162.101`
+1. Check DNS: `dig boxitracker.com` should return `160.191.162.101`
 2. Check containers: `docker compose -f docker-compose.prod.yml ps`
 3. Check nginx logs: `docker compose -f docker-compose.prod.yml logs nginx`
 
@@ -254,7 +254,7 @@ docker exec inec_certbot certbot certificates
 # Re-issue if needed
 docker compose -f docker-compose.prod.yml stop nginx
 docker exec inec_certbot certbot certonly --standalone \
-  -d election.thevrstation.co.uk --force-renewal
+  -d boxitracker.com --force-renewal
 docker compose -f docker-compose.prod.yml start nginx
 ```
 

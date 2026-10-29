@@ -37,6 +37,11 @@ env/
 .env
 .env.local
 .env.*.local
+.env.prod
+backend/.env.prod
+
+# Kiro settings (contains secrets)
+.kiro/settings/
 
 # Logs
 logs/

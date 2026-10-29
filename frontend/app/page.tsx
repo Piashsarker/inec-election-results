@@ -26,6 +26,13 @@ interface QuickAction {
 
 const quickActions: QuickAction[] = [
   {
+    title: 'Start Scraping',
+    description: 'Enter an INEC portal URL and scrape result sheet images',
+    href: '/scraping',
+    icon: '🕷️',
+    color: 'bg-indigo-500',
+  },
+  {
     title: 'Osun Governorship 2026',
     description: 'Latest scraped results — IPETUMODU II ward',
     href: '/results/scraped',
@@ -45,13 +52,6 @@ const quickActions: QuickAction[] = [
     href: '/results',
     icon: '📋',
     color: 'bg-green-500',
-  },
-  {
-    title: 'Aggregation',
-    description: 'View aggregated results by ward and LGA',
-    href: '/aggregation',
-    icon: '📈',
-    color: 'bg-purple-500',
   },
 ];
 
@@ -102,44 +102,87 @@ function QuickActionCard({ action }: { action: QuickAction }) {
 }
 
 function JobStatusWidget() {
-  const [jobs, setJobs] = useState<{ id: string; status: string; progress: number }[]>([]);
+  const [jobs, setJobs] = useState<{ id: string; status: string; processed_count: number; total_polling_units: number; election_type: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setJobs([]);
-    setLoading(false);
+    async function fetchJobs() {
+      try {
+        const list = await api.listJobs();
+        // Show only active/recent jobs
+        const recent = list.slice(0, 5);
+        setJobs(recent);
+      } catch {
+        setJobs([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchJobs();
+    const interval = setInterval(fetchJobs, 5000);
+    return () => clearInterval(interval);
   }, []);
+
+  const activeJobs = jobs.filter((j) => j.status === 'running' || j.status === 'queued');
 
   if (loading) {
     return (
       <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
         <h3 className="font-semibold text-foreground mb-4">Active Jobs</h3>
-        <p className="text-muted-foreground text-sm">Loading...</p>
+        <p className="text-muted-foreground text-sm">Loading…</p>
       </div>
     );
   }
 
   return (
     <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
-      <h3 className="font-semibold text-foreground mb-4">Active Jobs</h3>
-      {jobs.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No active scraping jobs</p>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-foreground">Active Jobs</h3>
+        <Link href="/scraping" className="text-xs text-primary hover:underline">
+          Manage →
+        </Link>
+      </div>
+      {activeJobs.length === 0 ? (
+        <div className="text-center py-4">
+          <p className="text-muted-foreground text-sm">No active scraping jobs</p>
+          <Link
+            href="/scraping"
+            className="mt-2 inline-block text-xs text-primary hover:underline"
+          >
+            Start a new job →
+          </Link>
+        </div>
       ) : (
         <div className="space-y-3">
-          {jobs.map((job) => (
-            <div key={job.id} className="flex items-center justify-between">
-              <span className="text-sm text-foreground">{job.id}</span>
-              <div className="flex items-center space-x-2">
-                <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all"
-                    style={{ width: `${job.progress}%` }}
-                  />
+          {activeJobs.map((job) => {
+            const pct = job.total_polling_units > 0
+              ? Math.round((job.processed_count / job.total_polling_units) * 100)
+              : 0;
+            return (
+              <div key={job.id}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-foreground truncate max-w-[160px]">
+                    {job.election_type ?? 'All elections'}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {job.status === 'running' && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    )}
+                    <span className="text-xs text-muted-foreground capitalize">{job.status}</span>
+                  </div>
                 </div>
-                <span className="text-xs text-muted-foreground">{job.progress}%</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-500"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground w-8 text-right">{pct}%</span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

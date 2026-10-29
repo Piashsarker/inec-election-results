@@ -374,7 +374,7 @@
 ## 10. Summary: Current vs BOXI Tracker
 
 ```
-CURRENT STATE (election.thevrstation.co.uk)
+CURRENT STATE (boxitracker.com)
 ├── ✅ Scraping pipeline (Playwright + OCR)
 ├── ✅ Basic dashboard + stats
 ├── ✅ Nigeria map (SVG, state-level)

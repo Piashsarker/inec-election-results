@@ -115,21 +115,18 @@ export interface PollingUnit {
   delimitation?: string;
 }
 
-// Scraping job tracking
+// Scraping job tracking (snake_case matches backend API response)
 export interface ScrapingJob {
   id: string;
   status: JobStatus;
-  electionType?: string;
-  targetState?: string;
-  targetLga?: string;
-  targetWard?: string;
-  totalPollingUnits: number;
-  processedCount: number;
-  successCount: number;
-  failedCount: number;
-  createdAt: Date;
-  startedAt?: Date;
-  completedAt?: Date;
+  election_type?: string | null;
+  target_state?: string | null;
+  target_lga?: string | null;
+  target_ward?: string | null;
+  total_polling_units: number;
+  processed_count: number;
+  success_count: number;
+  failed_count: number;
 }
 
 // Flagged result for manual review

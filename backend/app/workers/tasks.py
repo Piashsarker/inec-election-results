@@ -60,36 +60,16 @@ _async_session_factory = async_sessionmaker(
 
 
 def run_async(coro):
-    """Run an async coroutine in a synchronous context.
+    """Run an async coroutine in a Celery (synchronous) worker context.
 
-    Creates a new event loop if one doesn't exist.
-
-    Args:
-        coro: The coroutine to run
-
-    Returns:
-        The result of the coroutine
+    Always creates a fresh event loop to avoid conflicts with any
+    loop that may be running in the worker process.
     """
+    loop = asyncio.new_event_loop()
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If loop is already running, create a new one
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                return loop.run_until_complete(coro)
-            finally:
-                loop.close()
-        else:
-            return loop.run_until_complete(coro)
-    except RuntimeError:
-        # No event loop exists, create one
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            return loop.run_until_complete(coro)
-        finally:
-            loop.close()
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
 
 
 class ScrapingTask(Task):
@@ -300,19 +280,76 @@ async def _async_run_scraping_job(
             # Start new job
             await orchestrator.start_job(job_id=job_id)
 
-        # Get polling units to process (placeholder - actual implementation
-        # would query the portal or database)
-        # For now, we'll simulate with an empty list
-        # In production, this would integrate with the NavigatorAgent
-        polling_units: list[Any] = []
+        # Discover and process polling units via the NavigatorAgent
+        from app.agents.graph import create_initial_state, get_agent_graph
+        from app.agents.navigator import NavigatorAgent
+
+        navigator = NavigatorAgent()
+        graph = get_agent_graph()
+
+        logger.info(f"Discovering polling units for job {job_id}")
+        raw_units = await navigator.discover_all_polling_units(
+            election_type=election_type,
+            target_state=target_state,
+            target_lga=target_lga,
+            target_ward=target_ward,
+        )
 
         # Update total count
-        job.total_polling_units = len(polling_units)
+        job.total_polling_units = len(raw_units)
         await session.commit()
 
-        # Process polling units (placeholder for actual processing)
-        # In production, this would call orchestrator.distribute_work()
-        # with actual polling units and processing function
+        logger.info(f"Found {len(raw_units)} polling units to process")
+
+        success_count = 0
+        failed_count = 0
+
+        for unit_info in raw_units:
+            # Check if job was cancelled/paused between units
+            await session.refresh(job)
+            if job.status in ("cancelled", "paused"):
+                logger.info(f"Job {job_id} {job.status} — stopping processing")
+                break
+
+            loc = unit_info
+            pu_data = unit_info.get("polling_unit", {})
+
+            initial_state = create_initial_state(
+                job_id=job_id,
+                election_type=loc.get("election_type", ""),
+                state=loc.get("state", ""),
+                lga=loc.get("lga", ""),
+                ward=loc.get("ward", ""),
+            )
+            initial_state["polling_unit"] = pu_data
+
+            try:
+                final_state = await graph.ainvoke(initial_state)
+                if final_state.get("errors"):
+                    failed_count += 1
+                else:
+                    success_count += 1
+            except Exception as e:
+                logger.error(f"Error processing PU {pu_data.get('id')}: {e}")
+                failed_count += 1
+
+            # Update progress counters
+            job.processed_count = success_count + failed_count
+            job.success_count = success_count
+            job.failed_count = failed_count
+            await session.commit()
+
+            # Update Celery task state
+            task.update_state(
+                state="PROGRESS",
+                meta={
+                    "job_id": job_id,
+                    "total": job.total_polling_units,
+                    "processed": job.processed_count,
+                    "success": success_count,
+                    "failed": failed_count,
+                },
+            )
 
         # Mark job as completed
         job.status = JobStatus.COMPLETED.value

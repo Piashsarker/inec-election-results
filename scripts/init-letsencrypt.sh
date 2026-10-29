@@ -3,8 +3,8 @@
 # Script to initialize Let's Encrypt SSL certificates
 # Run this once on the VPS to obtain initial certificates
 
-DOMAIN="election.thevrstation.co.uk"
-EMAIL="admin@thevrstation.co.uk"  # Change this to your email
+DOMAIN="boxitracker.com"
+EMAIL="admin@boxitracker.com"
 STAGING=0  # Set to 1 for testing (to avoid rate limits)
 
 # Create required directories
