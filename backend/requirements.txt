@@ -37,7 +37,7 @@ aiofiles==23.2.1
 # Cloud Storage (S3-compatible: Cloudflare R2, AWS S3, Backblaze B2, MinIO)
 boto3==1.42.97
 aiobotocore==3.10.0
-aiohttp==3.13.5
+aiohttp==3.14.0
 
 # Redis (optional - for Celery)
 redis==5.0.4
