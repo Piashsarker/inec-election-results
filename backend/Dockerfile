@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # PostgreSQL client lib
     libpq-dev \
     gcc \
+    # Health check
+    curl \
     # Playwright browser dependencies
     libnss3 \
     libatk-bridge2.0-0 \
