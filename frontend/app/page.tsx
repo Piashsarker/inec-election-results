@@ -110,7 +110,10 @@ function JobStatusWidget() {
       try {
         const list = await api.listJobs();
         // Show only active/recent jobs
-        const recent = list.slice(0, 5);
+        const recent = list.slice(0, 5).map((j) => ({
+          ...j,
+          election_type: j.election_type ?? null,
+        }));
         setJobs(recent);
       } catch {
         setJobs([]);
